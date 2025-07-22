@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Verify OTP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center h-screen">
+
+  <form method="post" class="bg-white shadow-md p-6 rounded-md space-y-4 w-full max-w-sm">
+    {% csrf_token %}
+    <h2 class="text-xl font-semibold text-center">OTP Verification</h2>
+
+   
+    <div id="countdown" class="text-center text-sm text-gray-500 font-medium">
+      OTP expires in: <span id="timer">02:00</span>
+    </div>
+
+    {% for message in messages %}
+      <div class="text-sm text-red-500 text-center">{{ message }}</div>
+    {% endfor %}
+
+    <input type="text" name="otp" placeholder="Enter OTP"
+      class="w-full border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black" required>
+
+    <button type="submit"
+      class="w-full bg-black text-white py-2 rounded hover:opacity-90 transition">Verify OTP</button>
+
+    <div class="text-center text-sm text-gray-600 mt-4">
+      Didn’t receive the OTP?
+      <button type="button" id="resendBtn" disabled
+        class="text-gray-400 underline ml-1 cursor-not-allowed">Resend OTP</button>
+      <p id="resendMsg" class="text-green-600 text-xs mt-1"></p>
+    </div>
+  </form>
+
+  <script>
+    let timeLeft = 120;
+    const timerSpan = document.getElementById('timer');
+    const resendBtn = document.getElementById('resendBtn');
+    const resendMsg = document.getElementById('resendMsg');
+
+    function formatTime(seconds) {
+      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    timerSpan.textContent = formatTime(timeLeft);
+
+    let countdown = setInterval(() => {
+      timeLeft--;
+      timerSpan.textContent = formatTime(timeLeft);
+      if (timeLeft <= 0) {
+        clearInterval(countdown);
+        resendBtn.disabled = false;
+        resendBtn.classList.remove('cursor-not-allowed', 'text-gray-400');
+        resendBtn.classList.add('cursor-pointer', 'text-blue-600');
+        resendBtn.textContent = 'Resend OTP';
+      }
+    }, 1000);
+
+    resendBtn.addEventListener('click', () => {
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Resending...';
+      resendMsg.textContent = '';
+
+      fetch("{% url 'resend_otp' %}")
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            resendMsg.textContent = data.message;
+
+           
+            timeLeft = 120;
+            timerSpan.textContent = formatTime(timeLeft);
+            resendBtn.disabled = true;
+            resendBtn.classList.add('cursor-not-allowed', 'text-gray-400');
+            resendBtn.classList.remove('cursor-pointer', 'text-blue-600');
+            resendBtn.innerHTML = 'Resend OTP';
+
+            countdown = setInterval(() => {
+              timeLeft--;
+              timerSpan.textContent = formatTime(timeLeft);
+              if (timeLeft <= 0) {
+                clearInterval(countdown);
+                resendBtn.disabled = false;
+                resendBtn.classList.remove('cursor-not-allowed', 'text-gray-400');
+                resendBtn.classList.add('cursor-pointer', 'text-blue-600');
+                resendBtn.textContent = 'Resend OTP';
+              }
+            }, 1000);
+          } else {
+            resendMsg.textContent = 'Failed to resend OTP. Please try again.';
+          }
+        });
+    });
+  </script>
+
+</body>
+</html>

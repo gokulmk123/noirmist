@@ -1,0 +1,175 @@
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block title %}Noirmist | Home{% endblock %}
+
+{% block content %}
+
+
+<section class="relative w-full h-[500px]">
+  {% if banners %}
+    <img src="{{ banners.0.banner_img.url }}" alt="Hero Banner"
+         class="absolute inset-0 w-full h-full object-cover opacity-90">
+  {% else %}
+    <img src="{% static 'images/default_banner.jpg' %}" alt="Default Banner"
+         class="absolute inset-0 w-full h-full object-cover opacity-90">
+  {% endif %}
+  <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center">
+    <div class="max-w-7xl mx-auto px-8">
+      <div class="text-left text-white space-y-4">
+        <h4 class="text-2xl font-light italic">be style</h4>
+        <h1 class="text-4xl md:text-6xl font-bold leading-tight">Smell good.<br />Feel great</h1>
+        <a href="{% url 'product_list' %}" class="inline-block bg-white text-black font-medium px-6 py-2 mt-4 rounded hover:bg-gray-200 transition">
+          SHOP NOW
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="bg-gray-950 text-white py-12">
+  <div class="max-w-7xl mx-auto px-4">
+    <h3 class="text-2xl font-semibold mb-6">Fresh Arrivals</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {% for product in fresh_arrivals %}
+        <a href="{% url 'product_detail' product.id %}" class="group bg-gray-900 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300">
+          {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" class="w-full h-60 object-cover group-hover:scale-105 transition duration-300">
+          {% else %}
+            <img src="{% static 'images/default_product.jpg' %}" alt="Default" class="w-full h-60 object-cover opacity-60">
+          {% endif %}
+          <div class="p-3">
+            <h4 class="text-sm font-medium truncate">{{ product.name }}</h4>
+            <p class="text-sm mt-1">
+              <span class="text-white font-semibold">₹{{ product.discounted_price }}</span>
+              <span class="text-gray-400 line-through ml-2">₹{{ product.default_price }}</span>
+              
+              <span class="text-green-400 ml-1">({{ product.discount_percent }}% OFF)</span>
+              <div class="flex gap-1 mt-2">
+                {% for _ in "12345" %}
+                  <svg class="w-4 h-5 text-white-500 stroke-white-500 fill-transparent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.92c.969 0 1.371 1.24.588 1.81l-3.978 2.89a1 1 0 00-.364 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.978-2.89a1 1 0 00-1.176 0l-3.978 2.89c-.784.57-1.838-.197-1.54-1.118l1.518-4.674a1 1 0 00-.364-1.118l-3.978-2.89c-.783-.57-.38-1.81.588-1.81h4.92a1 1 0 00.95-.69l1.518-4.674z"/>
+                  </svg>
+                {% endfor %}
+              </div>
+            </p>
+
+            
+          </div>
+
+        
+          
+        </a>
+
+        
+      {% empty %}
+        <p class="col-span-4 text-gray-500 text-center">No fresh arrivals found.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+
+
+
+
+<section class="bg-gray-950 text-white py-12">
+  <div class="max-w-7xl mx-auto px-4">
+    <h3 class="text-2xl font-semibold mb-6">Best Selling</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {% for product in best_selling %}
+        <a href="{% url 'product_detail' product.id %}" class="group bg-gray-900 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300">
+          {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" class="w-full h-60 object-cover group-hover:scale-105 transition duration-300">
+          {% else %}
+            <img src="{% static 'images/default_product.jpg' %}" alt="Default" class="w-full h-60 object-cover opacity-60">
+          {% endif %}
+          <div class="p-3">
+            <h4 class="text-sm font-medium truncate">{{ product.name }}</h4>
+            <p class="text-sm mt-1">
+              <span class="text-white font-semibold">₹{{ product.discounted_price }}</span>
+              <span class="text-gray-400 line-through ml-2">₹{{ product.default_price }}</span>
+              <span class="text-green-400 ml-1">({{ product.discount_percent }}% OFF)</span>
+              <div class="flex gap-1 mt-2">
+                {% for _ in "12345" %}
+                  <svg class="w-4 h-5 text-white-500 stroke-white-500 fill-transparent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.92c.969 0 1.371 1.24.588 1.81l-3.978 2.89a1 1 0 00-.364 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.978-2.89a1 1 0 00-1.176 0l-3.978 2.89c-.784.57-1.838-.197-1.54-1.118l1.518-4.674a1 1 0 00-.364-1.118l-3.978-2.89c-.783-.57-.38-1.81.588-1.81h4.92a1 1 0 00.95-.69l1.518-4.674z"/>
+                  </svg>
+                {% endfor %}
+              </div>
+            </p>
+
+          </div>
+        </a>
+      {% empty %}
+        <p class="col-span-4 text-gray-500 text-center">No best sellers found.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+
+<section class="bg-gray-950 text-white py-12">
+  <div class="max-w-7xl mx-auto px-4">
+    <h3 class="text-2xl font-semibold mb-6">Recommended For You</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {% for product in recommended %}
+        <a href="{% url 'product_detail' product.id %}" class="group bg-gray-900 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300">
+          {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" class="w-full h-60 object-cover group-hover:scale-105 transition duration-300">
+          {% else %}
+            <img src="{% static 'images/default_product.jpg' %}" alt="Default" class="w-full h-60 object-cover opacity-60">
+          {% endif %}
+          <div class="p-3">
+            <h4 class="text-sm font-medium truncate">{{ product.name }}</h4>
+            <p class="text-sm mt-1">
+              <span class="text-white font-semibold">₹{{ product.discounted_price }}</span>
+              <span class="text-gray-400 line-through ml-2">₹{{ product.default_price }}</span>
+              <span class="text-green-400 ml-1">({{ product.discount_percent }}% OFF)</span>
+              <div class="flex gap-1 mt-2">
+                {% for _ in "12345" %}
+                  <svg class="w-4 h-5 text-white-500 stroke-white-500 fill-transparent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.92c.969 0 1.371 1.24.588 1.81l-3.978 2.89a1 1 0 00-.364 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.978-2.89a1 1 0 00-1.176 0l-3.978 2.89c-.784.57-1.838-.197-1.54-1.118l1.518-4.674a1 1 0 00-.364-1.118l-3.978-2.89c-.783-.57-.38-1.81.588-1.81h4.92a1 1 0 00.95-.69l1.518-4.674z"/>
+                  </svg>
+                {% endfor %}
+              </div>
+            </p>
+
+          </div>
+        </a>
+      {% empty %}
+        <p class="col-span-4 text-gray-500 text-center">No recommendations found.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if banners|length > 1 %}
+  <section class="bg-black text-white py-10">
+    <div class="max-w-5xl mx-auto px-4 relative">
+
+      
+      <img src="{{ banners.1.banner_img.url }}" alt="Mid Banner"
+           class="w-full rounded-lg object-cover opacity-90">
+
+      
+      <div class="absolute inset-0 bg-gradient-to-r from-black/80 to-black/30 rounded-lg"></div>
+
+     
+      <div class="absolute inset-0 flex items-center px-10">
+        <h2 class="text-5xl md:text-6xl font-extrabold text-white tracking-wide leading-tight drop-shadow-xl italic">
+          {{ banners.1.banner_name }}
+        </h2>
+      </div>
+
+    </div>
+  </section>
+{% endif %}
+
+
+
+{% endblock %}

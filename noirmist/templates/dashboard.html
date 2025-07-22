@@ -1,0 +1,32 @@
+
+{% extends 'adminbase.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+
+
+{% block content %}
+
+<div class="bg-gray-100 py-3 px-4 text-sm">
+    
+    <span class="text-gray-800 font-semibold">Dashboard</span>
+  </div>
+
+<div class="grid grid-cols-3 gap-6 mb-6 mt-10">
+  
+  <div class="bg-white rounded-lg p-4 shadow">
+    <p class="text-sm text-gray-500">Customers</p>
+    
+    <h2 class="text-2xl font-bold mt-2">{{key1}}</h2>
+    
+  </div>
+
+  <div class="bg-white rounded-lg p-6 shadow">
+    <p class="text-sm text-gray-500">product count</p>
+    <h2 class="text-2xl font-bold mt-2">{{key2}}</h2>
+    
+</div>
+
+
+  
+{% endblock %}

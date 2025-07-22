@@ -1,0 +1,129 @@
+{% extends 'adminbase.html' %}
+
+{% block title %}Admin Customers{% endblock %}
+
+
+{% block content %}
+
+<div class="bg-gray-100 py-3 px-4 text-sm">
+    <a href="{% url 'admin_dashboard' %}" class="text-gray-500 hover:text-gray-700">Dashboard &gt;</a>
+    <span class="text-gray-800 font-semibold">Customer</span>
+  </div>
+
+<form method="GET" class="mb-6 flex justify-end mt-10">
+  <input type="text" name="q" placeholder="Search by name or email"
+         value="{{ search_query }}"
+         class="border border-gray-300 rounded-l px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+  <button type="submit"
+          class="bg-indigo-600 text-white px-4 py-2 rounded-r hover:bg-indigo-700 transition">
+    Search
+  </button>
+</form>
+
+
+<div class="bg-white p-6 rounded-lg shadow mt-4">
+  <h2 class="text-xl font-semibold mb-4">Customer List</h2>
+  <table class="min-w-full table-auto text-sm">
+    <thead class="text-left text-gray-500 border-b">
+      <tr>
+        <th class="py-2">Name</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in customers %}
+      <tr class="border-b">
+        <td class="py-2">{{ user.username }}</td>
+        <td>{{ user.email }}</td>
+        <td>
+          {% if not user.is_active %}
+            <span class="text-red-500 font-semibold">Blocked</span>
+          {% else %}
+            <span class="text-green-600 font-semibold">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          
+          <button 
+            type="button" 
+            onclick="openModal('{{ user.id }}', '{{ user.is_active }}')" 
+            class="{% if not user.is_active %}text-green-600{% else %}text-red-600{% endif %} hover:underline"
+          >
+            {% if not user.is_active %}Unblock{% else %}Block{% endif %}
+          </button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="text-center py-4 text-gray-500">No customers found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+<div id="confirmationModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+    <h2 class="text-lg font-semibold mb-4">Confirm Action</h2>
+    <p class="mb-6 text-gray-600">
+      Are you sure you want to <span id="actionText" class="font-bold text-indigo-600"></span> this user?
+    </p>
+    <form method="POST" id="confirmForm">
+      {% csrf_token %}
+      <input type="hidden" name="user_id" id="confirmUserId" />
+      <div class="flex justify-end space-x-3">
+        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{% if page_obj.has_other_pages %}
+  <div class="mt-6 flex justify-center">
+    <nav class="inline-flex -space-x-px text-sm">
+      {% if page_obj.has_previous %}
+        <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="px-3 py-1 border rounded-l hover:bg-gray-100">First</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="px-3 py-1 border hover:bg-gray-100">Prev</a>
+      {% else %}
+        <span class="px-3 py-1 border text-gray-400">First</span>
+        <span class="px-3 py-1 border text-gray-400">Prev</span>
+      {% endif %}
+
+      <span class="px-4 py-1 border-t border-b bg-gray-200">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="px-3 py-1 border hover:bg-gray-100">Next</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="px-3 py-1 border rounded-r hover:bg-gray-100">Last</a>
+      {% else %}
+        <span class="px-3 py-1 border text-gray-400">Next</span>
+        <span class="px-3 py-1 border text-gray-400">Last</span>
+      {% endif %}
+    </nav>
+  </div>
+{% endif %}
+
+
+<!-- Modal JS -->
+<script>
+  function openModal(userId, isActive) {
+    document.getElementById("confirmationModal").classList.remove("hidden");
+    document.getElementById("confirmUserId").value = userId;
+    document.getElementById("actionText").textContent = isActive === "True" ? "block" : "unblock";
+  }
+
+  function closeModal() {
+    document.getElementById("confirmationModal").classList.add("hidden");
+  }
+</script>
+{% endblock %}

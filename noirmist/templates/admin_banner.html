@@ -1,0 +1,129 @@
+{% extends 'adminbase.html' %}
+
+{% block title %}Banner Management{% endblock %}
+
+{% block content %}
+
+<div class="bg-gray-100 py-3 px-4 text-sm">
+    <a href="{% url 'admin_dashboard' %}" class="text-gray-500 hover:text-gray-700">Dashboard &gt;</a>
+    <span class="text-gray-800 font-semibold">Banner</span>
+  </div>
+<div class="p-6">
+  <div class="text-sm text-gray-600 mb-4">Admin &gt; Banner Management</div>
+
+ 
+{% if message.tags == 'error' %}
+  <div class="mb-3 text-sm text-white px-4 py-2 rounded bg-red-500">
+{% else %}
+  <div class="mb-3 text-sm text-white px-4 py-2 rounded bg-green-500">
+{% endif %}
+    {{ message }}
+  </div>
+
+
+  <div class="flex justify-between items-center mb-4">
+    <div class="flex items-center space-x-2">
+      <label for="sort">Sort</label>
+      <select id="sort" class="border rounded px-2 py-1">
+        <option>End Date</option>
+        <option>Start Date</option>
+      </select>
+      <label>By</label>
+      <select class="border rounded px-2 py-1">
+        <option>Ascending</option>
+        <option>Descending</option>
+      </select>
+    </div>
+    <input type="text" placeholder="Filter" class="border rounded px-3 py-1" />
+  </div>
+
+  <div class="text-right">
+    <button onclick="openBannerModal()" class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700">+ Add Banner</button>
+  </div>
+</div>
+
+  {% for banner in banners %}
+  <div class="bg-indigo-100 p-4 mb-4 rounded shadow">
+    <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
+      {% csrf_token %}
+      <input type="hidden" name="banner_id" value="{{ banner.id }}"/>
+
+      <div>
+        <label class="text-xs block mb-1">Banner Name</label>
+        <input type="text" name="banner_name" value="{{ banner.banner_name }}" required class="w-full rounded px-2 py-1" />
+      </div>
+      <div>
+        <label class="text-xs block mb-1">Image</label>
+        <input type="file" name="banner_img" class="w-full rounded" />
+        {% if banner.banner_img %}
+          <img src="{{ banner.banner_img.url }}" class="h-16 w-auto mt-1 rounded border" alt="Banner" />
+        {% endif %}
+      </div>
+      <div>
+        <label class="text-xs block mb-1">Start Date</label>
+        <input type="date" name="start_date" value="{{ banner.start_date|date:'Y-m-d' }}" required class="w-full rounded px-2 py-1" />
+      </div>
+      <div>
+        <label class="text-xs block mb-1">End Date</label>
+        <input type="date" name="end_date" value="{{ banner.end_date|date:'Y-m-d' }}" required class="w-full rounded px-2 py-1" />
+      </div>
+      <div>
+        <label class="text-xs block mb-1">Days Left</label>
+        <p class="text-sm font-semibold text-gray-700">{{ banner.days_left }} Days</p>
+      </div>
+      <div class="text-right">
+        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Update</button>
+      </div>
+    </form>
+  </div>
+  {% empty %}
+    <p class="text-gray-500">No banners added yet.</p>
+  {% endfor %}
+
+  
+
+<!-- Modal -->
+<div id="bannerModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-40 flex items-center justify-center">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-xl p-6">
+    <h2 class="text-lg font-bold mb-4">Add New Banner</h2>
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="block text-sm mb-1">Banner Name</label>
+        <input type="text" name="banner_name" required class="w-full border rounded px-3 py-2" />
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm mb-1">Banner Image</label>
+        <input type="file" name="banner_img" required class="w-full border rounded px-3 py-2" />
+      </div>
+      <div class="mb-3 grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm mb-1">Start Date</label>
+          <input type="date" name="start_date" required class="w-full border rounded px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">End Date</label>
+          <input type="date" name="end_date" required class="w-full border rounded px-3 py-2" />
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm mb-1">Description</label>
+        <textarea name="description" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button type="button" onclick="closeBannerModal()" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Banner</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openBannerModal() {
+    document.getElementById('bannerModal').classList.remove('hidden');
+  }
+  function closeBannerModal() {
+    document.getElementById('bannerModal').classList.add('hidden');
+  }
+</script>
+{% endblock %}

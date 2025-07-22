@@ -1,0 +1,135 @@
+{% extends 'adminbase.html' %}
+
+{% block title %}Admin Products{% endblock %}
+
+
+
+{% block content %}
+<div class="bg-gray-100 py-3 px-4 text-sm">
+    <a href="{% url 'admin_dashboard' %}" class="text-gray-500 hover:text-gray-700">Dashboard &gt;</a>
+    <span class="text-gray-800 font-semibold">Product</span>
+  </div>
+<div class="flex justify-between items-center mb-6 mt-10">
+  <h2 class="text-xl font-semibold">Products</h2>
+  <div class="flex items-center gap-4">
+    <a href="{% url 'addproduct' %}" class="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">Add product</a>
+    <form method="GET">
+      <input type="text" name="q" placeholder="Search products"
+             value="{{ search_query }}"
+             class="border border-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </form>
+  </div>
+</div>
+
+<form method="GET">
+  {% if search_query %}
+    <input type="hidden" name="q" value="{{ search_query }}">
+  {% endif %}
+  <input type="hidden" name="show" value="{% if show_deleted %}false{% else %}deleted{% endif %}" />
+  <button type="submit" class="bg-gray-200 px-4 py-1 rounded">
+    {% if show_deleted %}Show Non-Deleted Products{% else %}Show Deleted Products{% endif %}
+  </button>
+</form>
+
+<div class="bg-white rounded-lg shadow overflow-x-auto mt-6">
+  <table class="min-w-full table-auto text-sm text-left">
+    <thead class="border-b text-gray-500">
+      <tr>
+        <th class="py-2 px-4">#</th>
+        <th class="py-2 px-4">Product</th>
+        <th class="py-2 px-4">Image</th>
+        <th class="py-2 px-4">Stock (Sizes)</th>
+        <th class="py-2 px-4">Status</th>
+        <th class="py-2 px-4">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for product in page_obj %}
+
+        <tr class="border-t">
+          <td class="py-2 px-4">{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
+
+          <td class="py-2 px-4 font-medium">{{ product.name }}</td>
+          <td class="py-2 px-4">
+         {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" class="h-10 w-10 object-cover rounded border" />
+          {% else %}
+            <span class="text-gray-400 italic">No image</span>
+          {% endif %}
+
+
+          </td>
+          <td class="py-2 px-4">
+            {% for variant in product.variants.all %}
+              <div>{{ variant.size }}: {{ variant.stock }}</div>
+            {% empty %}
+              <div>No variants</div>
+            {% endfor %}
+          </td>
+          <td class="py-2 px-4">
+            {% if product.status == 'listed' %}
+              <span class="text-green-600 font-semibold">Listed</span>
+            {% else %}
+              <span class="text-red-500 font-semibold">Unlisted</span>
+            {% endif %}
+          </td>
+          <td class="py-2 px-4 flex gap-2">
+  {% if show_deleted %}
+    <form method="POST" action="{% url 'recover_product' product.id %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="text-green-600 hover:underline">Recover</button>
+    </form>
+  {% else %}
+    <a href="{% url 'addproduct' %}?edit={{ product.id }}" class="text-blue-600 hover:underline">Edit</a>
+
+    <form method="POST" action="{% url 'toggle_product_status' product.id %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="text-indigo-600 hover:underline">
+        {% if product.status == 'listed' %}Unlist{% else %}List{% endif %}
+      </button>
+    </form>
+
+    <form method="POST" action="{% url 'delete_product' product.id %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="text-red-600 hover:underline">Delete</button>
+    </form>
+  {% endif %}
+</td>
+
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="mt-6 flex justify-center">
+  {% if page_obj.has_other_pages %}
+    <nav class="inline-flex -space-x-px text-sm">
+      {% if page_obj.has_previous %}
+        <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if show_deleted %}&show=deleted{% endif %}"
+           class="px-3 py-1 border rounded-l hover:bg-gray-100">First</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if show_deleted %}&show=deleted{% endif %}"
+           class="px-3 py-1 border hover:bg-gray-100">Prev</a>
+      {% else %}
+        <span class="px-3 py-1 border text-gray-400">First</span>
+        <span class="px-3 py-1 border text-gray-400">Prev</span>
+      {% endif %}
+
+      <span class="px-4 py-1 border-t border-b bg-gray-200">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if show_deleted %}&show=deleted{% endif %}"
+           class="px-3 py-1 border hover:bg-gray-100">Next</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if show_deleted %}&show=deleted{% endif %}"
+           class="px-3 py-1 border rounded-r hover:bg-gray-100">Last</a>
+      {% else %}
+        <span class="px-3 py-1 border text-gray-400">Next</span>
+        <span class="px-3 py-1 border text-gray-400">Last</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+</div>
+
+</div>
+{% endblock %}

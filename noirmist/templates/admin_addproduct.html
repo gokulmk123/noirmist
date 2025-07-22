@@ -1,0 +1,378 @@
+{% extends 'adminbase.html' %}
+
+{% block title %}{% if is_edit %}Edit Product{% else %}Add Product{% endif %}{% endblock %}
+
+{% block content %}
+
+<div class="bg-gray-100 py-3 px-4 text-sm">
+    <a href="{% url 'admin_dashboard' %}" class="text-gray-500 hover:text-gray-700">Dashboard ></a>
+    <a href="{% url 'admin_product' %}" class="text-gray-500 hover:text-gray-700">Product ></a>
+    <span class="text-gray-800 font-semibold">Add Product</span>
+</div>
+<div class="bg-white p-6 rounded-lg shadow mt-6">
+    <h2 class="text-xl font-semibold mb-6">{% if is_edit %}Edit Product{% else %}Add Product{% endif %}</h2>
+
+    {% if messages %}
+        <ul class="mb-4">
+            {% for message in messages %}
+                <li class="text-red-600">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" id="productForm">
+        {% csrf_token %}
+        {% if is_edit %}<input type="hidden" name="edit" value="{{ product.id }}">{% endif %}
+        <div class="grid grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Title</label>
+                <input type="text" name="name" value="{{ product.name|default:'' }}" required class="mt-1 block w-full border rounded px-3 py-2" />
+
+                <label class="block mt-4 text-sm font-medium text-gray-700">Category</label>
+                <select name="category_id" required class="mt-1 block w-full border rounded px-3 py-2">
+                    <option value="" disabled {% if not product %}selected{% endif %}>Select a category</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.category_id }}" {% if product.category_id == cat.category_id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <label class="block mt-4 text-sm font-medium text-gray-700">Brand</label>
+                <select name="brand_id" required class="mt-1 block w-full border rounded px-3 py-2">
+                    <option value="" disabled {% if not product %}selected{% endif %}>Select a brand</option>
+                    {% for brand in brands %}
+                        <option value="{{ brand.brand_id }}" {% if product.brand_id == brand.brand_id %}selected{% endif %}>{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <label class="block mt-4 text-sm font-medium text-gray-700">Description</label>
+                <textarea name="description" rows="4" class="mt-1 block w-full border rounded px-3 py-2">{{ product.description|default:'' }}</textarea>
+            </div>
+
+            <div>
+                <button type="button" onclick="openVariantModal()" class="bg-indigo-600 text-white px-4 py-2 rounded mb-4 hover:bg-indigo-700">
+                    + Add Variant
+                </button>
+                <div id="variantList" class="space-y-3 text-sm">
+                    {% for v in variants %}
+                        <div class="border p-3 rounded bg-gray-100">
+                            <strong>Size:</strong> {{ v.size }}, <strong>Price:</strong> {{ v.price }}, <strong>Stock:</strong> {{ v.stock }}
+                            <input type="hidden" name="variants[]" value="{{ v.size }}|{{ v.price }}|{{ v.stock }}" />
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 flex space-x-3">
+            <button type="submit" class="bg-black text-white px-5 py-2 rounded hover:bg-gray-900">
+                {% if is_edit %}Update Product{% else %}Save Product{% endif %}
+            </button>
+            <a href="{% url 'admin_product' %}" class="bg-red-600 text-white px-5 py-2 rounded hover:bg-red-700">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<!-- Variant Modal -->
+<div id="variantModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-40 overflow-auto">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 mx-auto my-12 relative">
+        <h3 class="text-lg font-semibold mb-4">Add Variant</h3>
+
+        <div class="mb-3">
+            <label class="block text-sm mb-1">Size</label>
+            <input type="number" id="variantSize"  min="0" step="1" class="w-full border rounded px-3 py-2" />
+        </div>
+        <div class="mb-3">
+            <label class="block text-sm mb-1">Price</label>
+            <input type="number" id="variantPrice" min="0" step="0.01" class="w-full border rounded px-3 py-2" />
+        </div>
+        <div class="mb-3">
+            <label class="block text-sm mb-1">Stock</label>
+            <input type="number" id="variantStock" min="0" step="1" class="w-full border rounded px-3 py-2" />
+        </div>
+
+        <div class="mb-3">
+            <label class="block text-sm mb-1">Upload Images (3–5)</label>
+            <input type="file" id="variantImageInput" accept="image/*" multiple class="w-full" />
+            <div id="imagePreview" class="flex flex-wrap mt-2 gap-2"></div>
+        </div>
+        <div id="cropContainer" class="hidden mb-4 overflow-auto max-h-[70vh] border p-3 rounded">
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="text-md font-semibold">Crop Image</h4>
+                <button type="button" onclick="closeCropModal()" class="text-red-600 text-xl font-bold">×</button>
+            </div>
+            <img id="cropImage" class="max-w-full mx-auto rounded shadow" />
+            <button type="button" id="cropBtn" class="mt-3 bg-blue-600 text-white px-3 py-1 rounded">Crop</button>
+        </div>
+
+        <div class="flex justify-end space-x-2 mt-4">
+            <button type="button" onclick="closeVariantModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+            <button type="button" onclick="saveVariant()" class="px-4 py-2 bg-indigo-600 text-white rounded">Add</button>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+    const modal = document.getElementById('variantModal');
+    const imageInput = document.getElementById('variantImageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const cropContainer = document.getElementById('cropContainer');
+    const cropImage = document.getElementById('cropImage');
+    const cropBtn = document.getElementById('cropBtn');
+    const variantList = document.getElementById('variantList');
+
+    let cropper, currentCropIndex = null;
+    let selectedImages = [];
+    let variantData = [];
+    let editingIndex = null;
+
+    cropBtn.onclick = function () {
+        if (cropper && currentCropIndex !== null) {
+            cropper.getCroppedCanvas().toBlob(blob => {
+                const croppedFile = new File([blob], `cropped_${Date.now()}.png`, { type: 'image/png' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    croppedFile.preview = reader.result;
+                    selectedImages[currentCropIndex] = croppedFile;
+                    renderImagePreview();
+                    closeCropModal();
+                };
+                reader.readAsDataURL(croppedFile);
+            });
+        }
+    };
+
+    function openVariantModal(index = null) {
+        modal.classList.remove('hidden');
+        resetModal();
+        editingIndex = index;
+
+        if (index !== null) {
+            const variant = variantData[index];
+            document.getElementById('variantSize').value = variant.size;
+            document.getElementById('variantPrice').value = variant.price;
+            document.getElementById('variantStock').value = variant.stock;
+            selectedImages = variant.images.map(img => {
+                if (img instanceof File) return img;
+                // Recreate File from base64 preview
+                const byteString = atob(img.preview.split(',')[1]);
+                const mimeString = img.preview.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: mimeString });
+                const file = new File([blob], `restored_${Date.now()}.png`, { type: mimeString });
+                file.preview = img.preview;
+                return file;
+            });
+            renderImagePreview();
+        }
+    }
+
+    function closeVariantModal() {
+        modal.classList.add('hidden');
+        resetModal();
+    }
+
+    function resetModal() {
+        document.getElementById('variantSize').value = '';
+        document.getElementById('variantPrice').value = '';
+        document.getElementById('variantStock').value = '';
+        imageInput.value = '';
+        imagePreview.innerHTML = '';
+        cropContainer.classList.add('hidden');
+        selectedImages = [];
+        cropper?.destroy();
+        editingIndex = null;
+    }
+
+    imageInput.addEventListener('change', function (e) {
+        const files = Array.from(e.target.files);
+        const combined = [...selectedImages, ...files];
+        if (combined.length > 5) {
+            alert("Max 5 images allowed per variant.");
+            return;
+        }
+        selectedImages = combined;
+        renderImagePreview();
+    });
+
+    function renderImagePreview() {
+        imagePreview.innerHTML = '';
+        selectedImages.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                file.preview = event.target.result;
+                const previewBox = document.createElement('div');
+                previewBox.className = 'relative w-20 h-20';
+                previewBox.innerHTML = `
+                    <img src="${event.target.result}" class="object-cover w-full h-full rounded border" />
+                    <button type="button" onclick="removeImage(${index})" class="absolute top-0 right-0 bg-red-600 text-white rounded-full w-5 h-5 text-xs">×</button>
+                    <button type="button" onclick="startCrop(${index})" class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-5 h-5 text-xs">✂</button>
+                `;
+                imagePreview.appendChild(previewBox);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function startCrop(index) {
+        const file = selectedImages[index];
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            cropImage.src = event.target.result;
+            cropContainer.classList.remove('hidden');
+            cropper?.destroy();
+            cropper = new Cropper(cropImage, {
+                aspectRatio: 1,
+                viewMode: 1,
+            });
+            currentCropIndex = index;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function closeCropModal() {
+        cropper?.destroy();
+        cropper = null;
+        cropContainer.classList.add('hidden');
+        cropImage.src = '';
+        currentCropIndex = null;
+    }
+
+    function removeImage(index) {
+        selectedImages.splice(index, 1);
+        renderImagePreview();
+    }
+
+    function saveVariant() {
+        const size = document.getElementById('variantSize').value.trim();
+        const price = parseFloat(document.getElementById('variantPrice').value);
+        const stock = parseInt(document.getElementById('variantStock').value);
+
+        // Client-side validation
+        if (!size) {
+            alert("Size is required.");
+            return;
+        }
+
+        if (isNaN(size) || size < 0) {
+            alert("size must be a non-negative number.");
+            return;
+        }
+        if (isNaN(price) || price < 0) {
+            alert("Price must be a non-negative number.");
+            return;
+        }
+        if (isNaN(stock) || stock < 0) {
+            alert("Stock must be a non-negative integer.");
+            return;
+        }
+
+        const isDuplicate = variantData.some((v, idx) => v.size === size && idx !== editingIndex);
+        if (isDuplicate) {
+            alert("Duplicate size not allowed.");
+            return;
+        }
+
+        const variant = {
+            size,
+            price,
+            stock,
+            images: [...selectedImages]
+        };
+
+        if (editingIndex !== null) {
+            variantData[editingIndex] = variant;
+        } else {
+            variantData.push(variant);
+        }
+
+        renderVariantList();
+        closeVariantModal();
+    }
+
+    function renderVariantList() {
+        variantList.innerHTML = '';
+        variantData.forEach((variant, index) => {
+            const div = document.createElement('div');
+            div.className = 'border p-3 rounded bg-gray-100 relative';
+            div.innerHTML = `
+                <strong>Size:</strong> ${variant.size}, 
+                <strong>Price:</strong> ₹${variant.price}, 
+                <strong>Stock:</strong> ${variant.stock}
+                <div class="mt-2 flex gap-2">
+                    ${variant.images.map(img => {
+                        const url = img.preview || URL.createObjectURL(img);
+                        return `<img src="${url}" class="h-10 w-10 object-cover rounded border" />`;
+                    }).join('')}
+                </div>
+                <button type="button" onclick="editVariant(${index})" class="absolute top-1 right-20 text-blue-600 text-xs">✏ Edit</button>
+                <button type="button" onclick="deleteVariant(${index})" class="absolute top-1 right-2 text-red-600 text-xs">🗑 Delete</button>
+            `;
+            variantList.appendChild(div);
+        });
+
+        // Clear existing hidden inputs
+        document.querySelectorAll('input[name="variants[]"], input[name="variantImages"]').forEach(e => e.remove());
+
+        // Add to form as hidden fields
+        variantData.forEach(variant => {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'variants[]';
+            hidden.value = `${variant.size}|${variant.price}|${variant.stock}`;
+            document.getElementById('productForm').appendChild(hidden);
+
+            variant.images.forEach(img => {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.name = 'variantImages';
+                fileInput.files = createFileList([img]);
+                fileInput.hidden = true;
+                document.getElementById('productForm').appendChild(fileInput);
+            });
+        });
+    }
+
+    function createFileList(files) {
+        const dataTransfer = new DataTransfer();
+        files.forEach(file => dataTransfer.items.add(file));
+        return dataTransfer.files;
+    }
+
+    function editVariant(index) {
+        openVariantModal(index);
+    }
+
+    function deleteVariant(index) {
+        variantData.splice(index, 1);
+        renderVariantList();
+    }
+
+    {% if is_edit and variants %}
+        variantData = [
+            {% for v in variants %}
+                {
+                    size: "{{ v.size }}",
+                    price: "{{ v.price }}",
+                    stock: "{{ v.stock }}",
+                    images: [
+                        {% for img in v.images.all %}
+                            {
+                                preview: "{{ img.image.url }}"
+                            }{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        renderVariantList();
+    {% endif %}
+</script>
+
+{% endblock %}

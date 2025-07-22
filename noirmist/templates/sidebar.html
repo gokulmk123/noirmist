@@ -1,0 +1,36 @@
+    {% extends 'user_base.html' %}
+    {% load static %}
+
+    {% block content %}
+    <div class="w-full p-4 space-y-4 text-gray-700 text-sm font-medium">
+    <a href="{% url 'profile' %}" class="flex items-center space-x-2 hover:text-black">
+        <i class="fa fa-user"></i>
+        <span>Profile</span>
+    </a>
+    <a href="" class="flex items-center space-x-2 hover:text-black">
+        <i class="fa fa-shopping-bag"></i>
+        <span>Orders</span>
+    </a>
+    <a href="" class="flex items-center space-x-2 hover:text-black">
+        <i class="fa fa-wallet"></i>
+        <span>Wallet</span>
+    </a>
+    <a href="" class="flex items-center space-x-2 hover:text-black">
+        <i class="fa fa-map-marker-alt"></i>
+        <span>Address</span>
+    </a>
+    <a href="" class="flex items-center space-x-2 hover:text-black">
+        <i class="fa fa-lock"></i>
+        <span>Password</span>
+    </a>
+    <a href="" class="flex items-center space-x-2 hover:text-black">
+        <i class="fa fa-gift"></i>
+        <span>Refer & Earn</span>
+    </a>
+    <a href="" class="flex items-center space-x-2 text-red-500 hover:text-red-600">
+        <i class="fa fa-sign-out-alt"></i>
+        <span>Logout</span>
+    </a>
+    </div>
+
+    {% endblock %}
