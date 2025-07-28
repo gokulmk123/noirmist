@@ -1,2 +1,131 @@
 {% extends 'user_base.html' %}
 {% load static %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold">Shopping Cart</h2>
+        <p class="text-sm text-gray-500 mt-1">NOIRMIST > Cart</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="md:col-span-2 space-y-6">
+            {% if cart_items %}
+                {% for item in cart_items %}
+                    <div class="flex justify-between items-center border rounded p-4 bg-dark shadow-sm">
+                     <div class="flex items-center gap-4">
+                        {% if item.main_image %}
+                            <img src="{{ item.main_image.image.url }}" alt="{{ item.variant.product_id.name|default:'Product Image' }}" class="w-20 h-20 object-cover rounded">
+                        {% else %}
+                            <img src="{% static 'images/default_product.jpg' %}" alt="Default Product Image" class="w-20 h-20 object-cover rounded">
+                        {% endif %}
+                        <div>
+                            <h3 class="font-medium text-lg">{{ item.variant.product_id.name|default:"No name" }}</h3>
+                            <p class="text-sm text-gray-500">Size: {{ item.variant.size }} ML</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div>
+                            <p class="font-semibold text-lg">₹{{ item.discounted_price }}</p>
+                            <p class="text-sm text-gray-500 line-through">₹{{ item.variant.price }}</p>
+                        </div>
+                        <div class="flex items-center border rounded">
+                            <button class="px-3 py-1 text-lg font-semibold" onclick="updateQuantity('{{ item.id }}', 'decrease')">-</button>
+                            <span id="quantity-{{ item.id }}" class="px-4">{{ item.quantity }}</span>
+                            <button class="px-3 py-1 text-lg font-semibold" onclick="updateQuantity('{{ item.id }}', 'increase')">+</button>
+                        </div>
+                        <button class="text-gray-400 hover:text-red-600 text-xl" onclick="removeFromCart('{{ item.id }}')">×</button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center text-gray-600 text-lg py-10">Your cart is empty.</div>
+            {% endif %}
+        </div>
+        <div class="border p-6 rounded shadow-sm bg-white text-gray-800">
+            <h3 class="text-xl font-semibold mb-4">Order Summary</h3>
+            <div class="flex justify-between text-sm mb-2">
+                <span>Subtotal</span>
+                <span name="subtotal">₹{{ subtotal }}</span>
+            </div>
+            <div class="flex justify-between text-sm mb-2">
+                <span>Shipping</span>
+                <span class="text-green-600">Free</span>
+            </div>
+            <div class="flex justify-between font-semibold text-lg border-t pt-4 mb-4">
+                <span>Total</span>
+                <span name="total">₹{{ total }}</span>
+            </div>
+            <a href="{% url 'checkout' %}" class="block w-full bg-black text-white text-center py-2 rounded hover:bg-gray-800 transition">Checkout</a>
+            <a href="{% url 'product_list' %}" class="block text-center text-sm text-gray-500 mt-3 hover:underline">Continue Shopping</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateQuantity(itemId, action) {
+        let quantityElement = document.querySelector(`[onclick="updateQuantity('${itemId}', 'increase')"`).parentElement.querySelector('span');
+        let currentQuantity = parseInt(quantityElement.textContent);
+        let newQuantity = action === 'increase' ? currentQuantity + 1 : currentQuantity - 1;
+
+        if (newQuantity < 1) return;
+
+        fetch('/update-cart-item/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                item_id: itemId,
+                quantity: newQuantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                quantityElement.textContent = newQuantity;
+                document.querySelector('[name="subtotal"]').textContent = `₹${data.subtotal.toFixed(2)}`;
+                document.querySelector('[name="total"]').textContent = `₹${data.total.toFixed(2)}`;
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+
+    function removeFromCart(itemId) {
+        if (confirm('Are you sure you want to remove this item?')) {
+            fetch('/remove-cart-item/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ item_id: itemId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

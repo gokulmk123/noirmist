@@ -7,70 +7,71 @@
     <script src="https://cdn.tailwindcss.com"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-white text-gray-900">
+<body class="bg-black text-gray-100">
 
- 
-   <header class="border-b">
+   <!-- Header -->
+   <header class="border-b border-gray-700 bg-gray-900">
         <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="text-2xl font-bold tracking-widest">NOIRMIST</div>
-            <nav class="space-x-6 hidden md:block">
-                <a href="{% url 'home' %}" class="hover:text-black">Home</a>
-                <a href="{% url 'product_list' %}" class="hover:text-black">shop</a>
-                <a href="#" class="hover:text-black">Categories</a>
-                <a href="#" class="hover:text-black">Brands</a>
-                <a href="#" class="hover:text-black">About</a>
-                <a href="#" class="hover:text-black">Contact</a>
+            <div class="text-2xl font-bold tracking-widest text-white">NOIRMIST</div>
+            <nav class="space-x-6 hidden md:block text-gray-300">
+                <a href="{% url 'home' %}" class="hover:text-white">Home</a>
+                <a href="{% url 'product_list' %}" class="hover:text-white">Shop</a>
+                <a href="#" class="hover:text-white">Categories</a>
+                <a href="#" class="hover:text-white">Brands</a>
+                <a href="#" class="hover:text-white">About</a>
+                <a href="#" class="hover:text-white">Contact</a>
             </nav>
             <div class="flex items-center space-x-4">
+                <!-- Search -->
                 <form method="get" action="{% url 'product_list' %}" class="hidden md:flex items-center space-x-2">
                     <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search products"
-                        class="border px-3 py-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-black" />
-                    <button type="submit" class="px-2 py-1 bg-black text-white text-sm rounded hover:bg-gray-800">Search</button>
+                        class="border border-gray-700 bg-gray-800 text-white px-3 py-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-white" />
+                    <button type="submit" class="px-2 py-1 bg-white text-black text-sm rounded hover:bg-gray-300">Search</button>
                     {% if request.GET.q %}
-                        <a href="{% url 'product_list' %}" class="px-2 py-1 bg-gray-200 text-sm rounded">Clear</a>
+                        <a href="{% url 'product_list' %}" class="px-2 py-1 bg-gray-700 text-white text-sm rounded">Clear</a>
                     {% endif %}
-                    </form>
+                </form>
+
+                <!-- Auth -->
                 {% if user.is_authenticated %}
                     <form action="{% url 'user_logout' %}" method="post" class="inline">
                         {% csrf_token %}
-                        <button type="submit" class="text-sm underline text-red-500 hover:text-red-700">Logout</button>
+                        <button type="submit" class="text-sm underline text-red-400 hover:text-red-600">Logout</button>
                     </form>
-                    {% else %}
-                    <a href="{% url 'user_login' %}" class="text-sm underline">Login</a>
-                    {% endif %}
+                {% else %}
+                    <a href="{% url 'user_login' %}" class="text-sm underline text-gray-300 hover:text-white">Login</a>
+                {% endif %}
 
-                    {% comment %}  {% endcomment %}
-
-                    <a href="{% if user.is_authenticated %}/profile/{% else %}/user_login/{% endif %}" class="inline-block bg-gray-200 rounded-full p-2 hover:bg-gray-300 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <!-- Profile Icon -->
+                <a href="{% if user.is_authenticated %}/profile/{% else %}/user_login/{% endif %}" class="inline-block bg-gray-700 rounded-full p-2 hover:bg-gray-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M5.121 17.804A9 9 0 0112 15a9 9 0 016.879 2.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    </a>
-
-                
-                <a href="{% if user.is_authenticated %}/cart/{% else %}/user_login/{% endif %}" class="text-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9h14l-2-9M9 21a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4z"/>
-                </svg>
                 </a>
 
+                <!-- Cart -->
+                <a href="{% if user.is_authenticated %}/cart/{% else %}/user_login/{% endif %}" class="text-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6 text-white">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9h14l-2-9M9 21a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                </a>
             </div>
         </div>
     </header>
 
-    
-    <main>
+    <!-- Main content -->
+    <main class="min-h-screen">
         {% block content %}
         {% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-100 mt-16">
-        <div class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm text-gray-700">
+    <footer class="bg-gray-900 text-gray-400 mt-16">
+        <div class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
             <div>
-                <h3 class="font-bold mb-2">NOIRMIST</h3>
-                <p class="text-xs text-gray-500 mb-2">noirmist brings fragrances that reflect your essence.</p>
+                <h3 class="font-bold mb-2 text-white">NOIRMIST</h3>
+                <p class="text-xs mb-2">noirmist brings fragrances that reflect your essence.</p>
                 <div class="flex space-x-3 text-lg">
                     <a href="#"></a>
                     <a href="#"></a>
@@ -78,35 +79,35 @@
                 </div>
             </div>
             <div>
-                <h4 class="font-semibold mb-2">Support</h4>
+                <h4 class="font-semibold mb-2 text-white">Support</h4>
                 <ul class="space-y-1">
-                    <li><a href="#">FAQ</a></li>
-                    <li><a href="#">Terms of Use</a></li>
-                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#" class="hover:underline">FAQ</a></li>
+                    <li><a href="#" class="hover:underline">Terms of Use</a></li>
+                    <li><a href="#" class="hover:underline">Privacy Policy</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="font-semibold mb-2">Company</h4>
+                <h4 class="font-semibold mb-2 text-white">Company</h4>
                 <ul class="space-y-1">
-                    <li><a href="#">About us</a></li>
-                    <li><a href="#">Contact</a></li>
-                    <li><a href="#">Careers</a></li>
+                    <li><a href="#" class="hover:underline">About us</a></li>
+                    <li><a href="#" class="hover:underline">Contact</a></li>
+                    <li><a href="#" class="hover:underline">Careers</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="font-semibold mb-2">Shop</h4>
+                <h4 class="font-semibold mb-2 text-white">Shop</h4>
                 <ul class="space-y-1">
-                    <li><a href="#">My Account</a></li>
-                    <li><a href="#">Checkout</a></li>
-                    <li><a href="#">Cart</a></li>
+                    <li><a href="#" class="hover:underline">My Account</a></li>
+                    <li><a href="#" class="hover:underline">Checkout</a></li>
+                    <li><a href="#" class="hover:underline">Cart</a></li>
                 </ul>
-                <h4 class="font-semibold mt-4 mb-2">Accepted Payments</h4>
+                <h4 class="font-semibold mt-4 mb-2 text-white">Accepted Payments</h4>
                 <div class="flex space-x-2 text-lg">
-                    
+                    <!-- Add icons if needed -->
                 </div>
             </div>
         </div>
-        <div class="text-center text-xs text-gray-500 py-4 border-t">
+        <div class="text-center text-xs text-gray-500 py-4 border-t border-gray-700">
             © 2025 Gokul. All rights reserved.
         </div>
     </footer>

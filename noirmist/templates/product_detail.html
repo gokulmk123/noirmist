@@ -1,237 +1,224 @@
-{% extends 'user_base.html' %}
-{% load static %}
+    {% extends 'user_base.html' %}
+    {% load static %}
 
-{% block content %}
- <div class="bg-gray-100 py-3 px-4 text-sm">
-    <a href="{% url 'home' %}" class="text-gray-500 hover:text-gray-700">Home &gt;</a>
-    <a href="{% url 'product_list' %}" class="text-gray-500 hover:text-gray-700">Products &gt;</a>
-    <span class="text-gray-800 font-semibold">{{ product.name }}</span>
-  </div>
-<section class="bg-black text-white py-12">
-
-  
-  <div class="max-w-6xl mx-auto px-4 md:flex gap-10">
-    
-  <div class="w-full md:w-1/2 relative">
-  <!-- Main Image -->
-  <div class="relative rounded-lg overflow-hidden">
-    <img id="main-image"
-         src="{% if images %}{{ images.0.image.url }}{% else %}{% static 'images/default_product.jpg' %}{% endif %}"
-         alt="Product Image"
-         class="w-full h-[500px] object-cover rounded-xl cursor-crosshair">
-    <!-- Zoom Lens -->
-    <div id="zoom-lens"
-         class="absolute hidden border-2 border-blue-300 bg-white bg-opacity-40 pointer-events-none w-40 h-40 z-50">
+    {% block content %}
+    <div class="bg-gray-100 py-3 px-4 text-sm">
+        <a href="{% url 'home' %}" class="text-gray-500 hover:text-gray-700">Home ></a>
+        <a href="{% url 'product_list' %}" class="text-gray-500 hover:text-gray-700">Products ></a>
+        <span class="text-gray-800 font-semibold">{{ product.name }}</span>
     </div>
-  </div>
-
-  <!-- Zoom Modal (larger now) -->
-  <div id="zoom-result"
-     class="hidden absolute top-0 left-full ml-6 w-[600px] h-[600px] border border-gray-400 overflow-hidden rounded-xl z-50 bg-white">
-    <img id="zoomed-image"
-         src="{% if images %}{{ images.0.image.url }}{% else %}{% static 'images/default_product.jpg' %}{% endif %}"
-         class="absolute">
-  </div>
-
-  <!-- Thumbnails -->
-  <div class="flex gap-2 mt-4">
-    {% for img in images %}
-      <img src="{{ img.image.url }}"
-           alt="Thumbnail {{ forloop.counter }}"
-           class="h-20 w-20 object-cover rounded-lg border border-transparent hover:border-white cursor-pointer transition duration-200"
-           onclick="changeImage('{{ img.image.url }}')">
-    {% endfor %}
-  </div>
-</div>
-  
-
-    
-    <div class="w-full md:w-1/2 mt-8 md:mt-0 space-y-5">
-      <div class="flex gap-1 mt-2">
-        {% for _ in "12345" %}
-          <svg class="w-4 h-5 text-white-500 stroke-white-500 fill-transparent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.92c.969 0 1.371 1.24.588 1.81l-3.978 2.89a1 1 0 00-.364 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.978-2.89a1 1 0 00-1.176 0l-3.978 2.89c-.784.57-1.838-.197-1.54-1.118l1.518-4.674a1 1 0 00-.364-1.118l-3.978-2.89c-.783-.57-.38-1.81.588-1.81h4.92a1 1 0 00.95-.69l1.518-4.674z"/>
-          </svg>
-        {% endfor %}
-      </div>
-      <h2 class="text-2xl md:text-3xl font-semibold">{{ product.name }}</h2>
-      <p class="text-gray-300">Category: {{ product.category_id.name }} | Brand: {{ product.brand_id.name }}</p>
-      {% if selected_variant %}
-        <p class="text-sm mt-1">
-          <span id="discounted-price" class="text-white font-semibold text-xl">₹{{ discounted_price }}</span>
-          <span id="original-price" class="text-gray-400 line-through ml-2">₹{{ original_price }}</span>
-          <span id="discount-percent" class="text-green-400 ml-1">({{ discount_percent }}% OFF)</span>
-        </p>
-
-        {% if selected_variant.stock <= 0  %}
-          <p class="text-sm text-gray-400">Stock: <span id="stock">out of stock</span></p>
-        {% elif selected_variant.stock  > 10 %}
-          <p class="text-sm text-gray-400">Stock: <span id="stock">available</span></p>
-        {% else %}
-          <p class="text-sm text-gray-400">Stock: <span id="stock">{{ selected_variant.stock }}</span></p>
-        {% endif %}
-
-      {% else %}
-        <p class="text-sm text-gray-400">No variants available.</p>
-      {% endif %}
-
-      <div>
-        <label for="size" class="block text-sm font-medium text-gray-300">Select Size:</label>
-        <select id="size" name="size" class="mt-1 block w-1/2 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white">
-          {% for variant in variants %}
-            <option value="{{ variant.size }}" {% if variant == selected_variant %}selected{% endif %}>{{ variant.size }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="mt-4">
-        <label for="quantity" class="block text-sm font-medium text-gray-300 mb-2">QUANTITY</label>
-        <div class="inline-flex border rounded overflow-hidden text-black">
-          <button type="button" onclick="decreaseQty()" class="px-3 py-1 bg-white">−</button>
-          <input
-            type="number"
-            id="quantity"
-            name="quantity"
-            value="1"
-            min="1"
-            max="{% if selected_variant %}{{ selected_variant.stock }}{% else %}0{% endif %}"
-            class="w-12 pl-4 pr-1 text-center border-l border-r border-gray-300 bg-white"
-            readonly
-          >
-          <button type="button" onclick="increaseQty()" class="px-3 py-1 bg-white">+</button>
+    <section class="bg-black text-white py-12">
+        <div class="max-w-6xl mx-auto px-4 md:flex gap-10">
+            <div class="w-full md:w-1/2 relative">
+                <!-- Main Image -->
+                <div class="relative rounded-lg overflow-hidden">
+                    <img id="main-image" src="{% if images %}{{ images.0.image.url }}{% else %}{% static 'images/default_product.jpg' %}{% endif %}" alt="Product Image" class="w-full h-[500px] object-cover rounded-xl cursor-crosshair">
+                    <div id="zoom-lens" class="absolute hidden border-2 border-blue-300 bg-white bg-opacity-40 pointer-events-none w-40 h-40 z-50"></div>
+                </div>
+                <div id="zoom-result" class="hidden absolute top-0 left-full ml-6 w-[600px] h-[600px] border border-gray-400 overflow-hidden rounded-xl z-50 bg-white">
+                    <img id="zoomed-image" src="{% if images %}{{ images.0.image.url }}{% else %}{% static 'images/default_product.jpg' %}{% endif %}" class="absolute">
+                </div>
+                <div class="flex gap-2 mt-4">
+                    {% for img in images %}
+                        <img src="{{ img.image.url }}" alt="Thumbnail {{ forloop.counter }}" class="h-20 w-20 object-cover rounded-lg border border-transparent hover:border-white cursor-pointer transition duration-200" onclick="changeImage('{{ img.image.url }}')">
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="w-full md:w-1/2 mt-8 md:mt-0 space-y-5">
+                <div class="flex gap-1 mt-2">
+                    {% for _ in "12345" %}
+                        <svg class="w-4 h-5 text-white-500 stroke-white-500 fill-transparent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.92c.969 0 1.371 1.24.588 1.81l-3.978 2.89a1 1 0 00-.364 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.978-2.89a1 1 0 00-1.176 0l-3.978 2.89c-.784.57-1.838-.197-1.54-1.118l1.518-4.674a1 1 0 00-.364-1.118l-3.978-2.89c-.783-.57-.38-1.81.588-1.81h4.92a1 1 0 00.95-.69l1.518-4.674z"/>
+                        </svg>
+                    {% endfor %}
+                </div>
+                <h2 class="text-2xl md:text-3xl font-semibold">{{ product.name }}</h2>
+                <p class="text-gray-300">Category: {{ product.category_id.name }} | Brand: {{ product.brand_id.name }}</p>
+                {% if selected_variant %}
+                    <p class="text-sm mt-1">
+                        <span id="discounted-price" class="text-white font-semibold text-xl">₹{{ discounted_price }}</span>
+                        <span id="original-price" class="text-gray-400 line-through ml-2">₹{{ original_price }}</span>
+                        <span id="discount-percent" class="text-green-400 ml-1">({{ discount_percent }}% OFF)</span>
+                    </p>
+                    {% if selected_variant.stock <= 0 %}
+                        <p class="text-sm text-gray-400">Stock: <span id="stock">out of stock</span></p>
+                    {% elif selected_variant.stock > 10 %}
+                        <p class="text-sm text-gray-400">Stock: <span id="stock">available</span></p>
+                    {% else %}
+                        <p class="text-sm text-gray-400">Stock: <span id="stock">{{ selected_variant.stock }}</span></p>
+                    {% endif %}
+                {% else %}
+                    <p class="text-sm text-gray-400">No variants available.</p>
+                {% endif %}
+                <div>
+                    <label for="size" class="block text-sm font-medium text-gray-300">Select Size:</label>
+                    <select id="size" name="size" class="mt-1 block w-1/2 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white" onchange="updateVariant()">
+                        {% for variant in variants %}
+                            <option value="{{ variant.id }}" data-price="{{ variant.price }}" data-discounted-price="{{ variant.price|add:'-10'|floatformat:2 }}" data-stock="{{ variant.stock }}">{{ variant.size }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mt-4">
+                    <label for="quantity" class="block text-sm font-medium text-gray-300 mb-2">QUANTITY</label>
+                    <div class="inline-flex border rounded overflow-hidden text-black">
+                        <button type="button" onclick="decreaseQty()" class="px-3 py-1 bg-white">−</button>
+                        <input type="number" id="quantity" name="quantity" value="1" min="1" max="{% if selected_variant %}{{ selected_variant.stock }}{% else %}0{% endif %}" class="w-12 pl-4 pr-1 text-center border-l border-r border-gray-300 bg-white" readonly>
+                        <button type="button" onclick="increaseQty()" class="px-3 py-1 bg-white">+</button>
+                    </div>
+                </div>
+                <div class="flex gap-4 mt-6">
+                    <form method="POST" id="add-to-cart-form" action="{% url 'add_to_cart' %}" data-product-id="{{ product.id }}">
+                        {% csrf_token %}
+                        <input type="hidden" name="variant_id" id="selected-variant-id">
+                        <input type="hidden" name="quantity" id="selected-quantity" value="1">
+                        <button type="submit" class="add-to-cart bg-black text-white px-6 py-2 rounded hover:bg-gray-800">Add to Cart</button>
+                    </form>
+                    <form method="POST" action="{% url 'add_to_wishlist' %}" class="wishlist-form">
+        {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ product.id }}">
+        <button type="submit" class="bg-gray-800 px-6 py-2 rounded text-white hover:bg-gray-700">Wishlist</button>
+    </form>
+                </div>
+            </div>
         </div>
-      </div>
+        <div class="mt-16 border-t border-gray-800 pt-8 max-w-6xl mx-auto px-4">
+            <h3 class="text-xl font-semibold mb-4">Product Description</h3>
+            <p class="text-gray-300 leading-relaxed text-sm md:text-base">{{ product.description|linebreaks }}</p>
+        </div>
+    </section>
 
-      
+    <script>
+        const variantData = {{ variant_data_json|safe }};
 
-      <div class="flex gap-4 mt-6">
-        <form method="POST" action="">
-          {% csrf_token %}
-          <input type="hidden" name="size" id="selected-size" value="{% if selected_variant %}{{ selected_variant.size }}{% endif %}">
-          <input type="hidden" name="quantity" id="selected-quantity" value="1">
-          <button type="submit" class="bg-white text-black font-semibold px-6 py-2 rounded hover:bg-gray-200 transition">Add to Cart</button>
-        </form>
-        <button class="bg-gray-800 px-6 py-2 rounded text-white hover:bg-gray-700">Wishlist</button>
-      </div>
-    </div>
+        function updateVariant() {
+            const select = document.getElementById('size');
+            const selectedOption = select.options[select.selectedIndex];
+            const variantId = select.value;
+            const variant = variantData[variantId];
 
-   
-  </div>
-   <div class="mt-16 border-t border-gray-800 pt-8 max-w-6xl mx-auto px-4">
-      <h3 class="text-xl font-semibold mb-4">Product Description</h3>
-      <p class="text-gray-300 leading-relaxed text-sm md:text-base">
-        {{ product.description|linebreaks }}
-      </p>
-    </div>
+            if (variant) {
+                document.getElementById('discounted-price').textContent = `₹${variant.discounted_price.toFixed(0)}`;
+                document.getElementById('original-price').textContent = `₹${variant.price.toFixed(0)}`;
+                document.getElementById('discount-percent').textContent = `(10% OFF)`;
+                document.getElementById('stock').textContent = variant.stock <= 0 ? 'out of stock' : (variant.stock > 10 ? 'available' : variant.stock);
+                document.getElementById('quantity').max = variant.stock;
+                document.getElementById('quantity').value = 1;
+                document.getElementById('selected-quantity').value = 1;
+                document.getElementById('selected-variant-id').value = variantId;
+            }
+        }
 
-  <script>
+        function decreaseQty() {
+            const qtyInput = document.getElementById('quantity');
+            let current = parseInt(qtyInput.value);
+            if (current > 1) {
+                qtyInput.value = current - 1;
+                document.getElementById('selected-quantity').value = current - 1;
+            }
+        }
 
-    const variantData = JSON.parse('{{ variant_data_json|escapejs }}');
-    console.log('Variant Data:', variantData); 
+        function increaseQty() {
+            const qtyInput = document.getElementById('quantity');
+            const maxStock = parseInt(qtyInput.max);
+            let current = parseInt(qtyInput.value);
+            if (current < maxStock) {
+                qtyInput.value = current + 1;
+                document.getElementById('selected-quantity').value = current + 1;
+            }
+        }
 
-   
-    document.getElementById('size').addEventListener('change', function() {
-      const selectedSize = this.value;
-      const variant = variantData.find(v => v.size === selectedSize);
-      if (variant) {
-        document.getElementById('discounted-price').textContent = `₹${variant.discounted_price.toFixed(0)}`;
-        document.getElementById('original-price').textContent = `₹${variant.price.toFixed(0)}`;
-        document.getElementById('discount-percent').textContent = `(10% OFF)`; 
-        document.getElementById('stock').textContent = variant.stock;
-        document.getElementById('quantity').max = variant.stock;
-        document.getElementById('quantity').value = 1; 
-        document.getElementById('selected-size').value = selectedSize; 
-        document.getElementById('selected-quantity').value = 1;
-      } else {
-        console.error('Variant not found for size:', selectedSize);
-      }
-    });
+        // Image zoom functionality (unchanged)
+        const image = document.getElementById("main-image");
+        const lens = document.getElementById("zoom-lens");
+        const zoomResult = document.getElementById("zoom-result");
+        const zoomedImage = document.getElementById("zoomed-image");
+        const zoomFactor = 2.5;
 
-    function decreaseQty() {
-      const qtyInput = document.getElementById('quantity');
-      let current = parseInt(qtyInput.value);
-      if (current > 1) {
-        qtyInput.value = current - 1;
-        document.getElementById('selected-quantity').value = current - 1;
-      }
-    }
+        lens.style.width = "150px";
+        lens.style.height = "150px";
 
-    function increaseQty() {
-      const qtyInput = document.getElementById('quantity');
-      const maxStock = parseInt(qtyInput.max);
-      let current = parseInt(qtyInput.value);
-      if (current < maxStock) {
-        qtyInput.value = current + 1;
-        document.getElementById('selected-quantity').value = current + 1;
-      }
-    }
+        function moveLens(e) {
+            const rect = image.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const lensWidth = lens.offsetWidth;
+            const lensHeight = lens.offsetHeight;
 
- const image = document.getElementById("main-image");
-  const lens = document.getElementById("zoom-lens");
-  const zoomResult = document.getElementById("zoom-result");
-  const zoomedImage = document.getElementById("zoomed-image");
+            let lensX = x - lensWidth / 2;
+            let lensY = y - lensHeight / 2;
 
-  const zoomFactor = 2.5; // adjust as needed
+            if (lensX < 0) lensX = 0;
+            if (lensY < 0) lensY = 0;
+            if (lensX > image.offsetWidth - lensWidth) lensX = image.offsetWidth - lensWidth;
+            if (lensY > image.offsetHeight - lensHeight) lensY = image.offsetHeight - lensHeight;
 
-  lens.style.width = "150px";
-  lens.style.height = "150px";
+            lens.style.left = lensX + "px";
+            lens.style.top = lensY + "px";
 
-  function moveLens(e) {
-    const rect = image.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+            zoomedImage.style.width = image.offsetWidth * zoomFactor + "px";
+            zoomedImage.style.height = image.offsetHeight * zoomFactor + "px";
+            zoomedImage.style.left = -lensX * zoomFactor + "px";
+            zoomedImage.style.top = -lensY * zoomFactor + "px";
+            const maxOffsetX = zoomedImage.offsetWidth - zoomResult.offsetWidth;
+            const maxOffsetY = zoomedImage.offsetHeight - zoomResult.offsetHeight;
+            const clampedLeft = Math.min(Math.max(-lensX * zoomFactor, -maxOffsetX), 0);
+            const clampedTop = Math.min(Math.max(-lensY * zoomFactor, -maxOffsetY), 0);
+            zoomedImage.style.left = clampedLeft + "px";
+            zoomedImage.style.top = clampedTop + "px";
+        }
 
-    const lensWidth = lens.offsetWidth;
-    const lensHeight = lens.offsetHeight;
+        image.addEventListener("mousemove", function (e) {
+            lens.classList.remove("hidden");
+            zoomResult.classList.remove("hidden");
+            moveLens(e);
+        });
 
-    let lensX = x - lensWidth / 2;
-    let lensY = y - lensHeight / 2;
+        image.addEventListener("mouseleave", function () {
+            lens.classList.add("hidden");
+            zoomResult.classList.add("hidden");
+        });
 
-    // Clamp lens position
-    if (lensX < 0) lensX = 0;
-    if (lensY < 0) lensY = 0;
-    if (lensX > image.offsetWidth - lensWidth) lensX = image.offsetWidth - lensWidth;
-    if (lensY > image.offsetHeight - lensHeight) lensY = image.offsetHeight - lensHeight;
+        image.addEventListener("mouseenter", function () {
+            zoomedImage.src = image.src;
+        });
 
-    lens.style.left = lensX + "px";
-    lens.style.top = lensY + "px";
+        function changeImage(src) {
+            image.src = src;
+            zoomedImage.src = src;
+        }
 
-    // Set zoomed image position & size
-    zoomedImage.style.width = image.offsetWidth * zoomFactor + "px";
-    zoomedImage.style.height = image.offsetHeight * zoomFactor + "px";
-    zoomedImage.style.left = -lensX * zoomFactor + "px";
-    zoomedImage.style.top = -lensY * zoomFactor + "px";
-    const maxOffsetX = zoomedImage.offsetWidth - zoomResult.offsetWidth;
-    const maxOffsetY = zoomedImage.offsetHeight - zoomResult.offsetHeight;
+        // Handle form submission via AJAX
+        document.getElementById('add-to-cart-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            const formData = new FormData(form);
 
-    const clampedLeft = Math.min(Math.max(-lensX * zoomFactor, -maxOffsetX), 0);
-    const clampedTop = Math.min(Math.max(-lensY * zoomFactor, -maxOffsetY), 0);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message); // Replace with UI update if needed
+                    // Optionally refresh cart or update badge
+                     // Redirect to cart page
+                } else {
+                    alert(data.message || 'Failed to add item to cart.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
 
-    zoomedImage.style.left = clampedLeft + "px";
-    zoomedImage.style.top = clampedTop + "px";
-  }
-
-  image.addEventListener("mousemove", function (e) {
-    lens.classList.remove("hidden");
-    zoomResult.classList.remove("hidden");
-    moveLens(e);
-  });
-
-  image.addEventListener("mouseleave", function () {
-    lens.classList.add("hidden");
-    zoomResult.classList.add("hidden");
-  });
-
-  image.addEventListener("mouseenter", function () {
-    zoomedImage.src = image.src;
-  });
-
-  function changeImage(src) {
-    image.src = src;
-    zoomedImage.src = src;
-  }
-
-
-  </script>
-{% endblock %}
+        // Initialize with the first variant
+        document.addEventListener('DOMContentLoaded', function() {
+            updateVariant();
+        });
+    </script>
+    {% endblock %}

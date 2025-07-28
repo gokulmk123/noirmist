@@ -1,0 +1,49 @@
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold">Order Confirmation</h2>
+        <p class="text-sm text-gray-500 mt-1">NOIRMIST > Cart > Checkout > Confirmation</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-2 mb-2 text-sm {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="border p-6 rounded shadow-sm bg-white text-gray-800">
+        <h3 class="text-xl font-semibold mb-4">Thank You for Your Order!</h3>
+        <p class="text-gray-600 mb-4">Your order <strong>#{{ order.id }}</strong> has been placed successfully.</p>
+        <img src="{% static 'images/thank_you_illustration.jpg' %}" alt="Thank You" class="w-32 h-32 mx-auto mb-4">
+        <h4 class="text-lg font-medium mb-2">Order Details</h4>
+        <div class="space-y-4">
+            {% for item in order.items.all %}
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-medium">{{ item.variant.product_id.name }} ({{ item.variant.size }} ML)</p>
+                        <p class="text-sm text-gray-500">Quantity: {{ item.quantity }}</p>
+                    </div>
+                    <p class="font-semibold">₹{{ item.price|floatformat:2 }}</p>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="flex justify-between font-semibold text-lg border-t pt-4 mt-4">
+            <span>Total</span>
+            <span>₹{{ order.total|floatformat:2 }}</span>
+        </div>
+        <div class="mt-4">
+            <h4 class="text-lg font-medium mb-2">Shipping Address</h4>
+            <p class="text-gray-600">{{ order.shipping_address }}</p>
+        </div>
+        <div class="mt-6 space-y-2">
+            <a href="{% url 'order_detail' order.id %}" class="block w-full bg-black text-white text-center py-2 rounded hover:bg-gray-800 transition">View Order Details</a>
+            <a href="{% url 'product_list' %}" class="block w-full bg-gray-200 text-gray-800 text-center py-2 rounded hover:bg-gray-300 transition">Continue Shopping</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

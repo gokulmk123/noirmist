@@ -1,1 +1,125 @@
 {% extends 'sidebar.html' %}
+{% load static %}
+
+{% block special_content %}
+<div class="bg-gray-900 rounded-lg shadow p-6 text-white">
+
+    <!-- Profile Header -->
+    <div class="bg-gray-800 p-6 rounded-t-lg flex flex-col items-center space-y-3 relative">
+        <!-- Profile image or fallback -->
+        <div class="relative h-24 w-24">
+            {% if user.image %}
+                <img src="{{ user.image.url }}" class="rounded-full h-24 w-24 border-4 border-gray-700 shadow object-cover" />
+            {% else %}
+                <div class="h-24 w-24 rounded-full bg-gray-700 flex items-center justify-center text-4xl border-4 border-gray-600 shadow">
+                    👤
+                </div>  
+            {% endif %}
+
+            <!-- Pencil Icon Button for Image Update -->
+            <form method="post" action="{% url 'update_profile_image' %}" enctype="multipart/form-data" class="absolute bottom-0 right-0">
+                {% csrf_token %}
+                <label class="cursor-pointer bg-gray-700 border border-gray-600 rounded-full p-1 shadow" title="Change Image">
+                    <i class="fa fa-pen text-xs text-white">✏️</i>
+                    <input type="file" name="image" accept="image/*" class="hidden" onchange="this.form.submit()" />
+                </label>
+            </form>
+        </div>
+
+        <!-- Username & Join Date -->
+        <h2 class="text-2xl font-bold text-white">{{ user.get_username }}</h2>
+        <p class="text-gray-400 text-sm">Member since {{ user.date_joined|date:"Y" }}</p>
+
+        <!-- Edit Profile Button -->
+        <button class="mt-2 px-4 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700" onclick="openEditModal()">
+            Edit Profile
+        </button>
+    </div>
+
+    <!-- User Info -->
+    <div class="mt-6 space-y-4">
+        <div class="bg-gray-800 p-4 rounded flex items-center space-x-4">
+            <i class="fa fa-user text-gray-400"></i>
+            <div>
+                <p class="text-xs text-gray-400">Full Name</p>
+                <p class="font-semibold text-white">{{ user.get_username }}</p>
+            </div>
+        </div>
+       <div class="bg-gray-800 p-4 rounded flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+        <i class="fa fa-envelope text-gray-400"></i>
+        <div>
+            <p class="text-xs text-gray-400">Email</p>
+            <p class="font-semibold text-white">{{ user.email }}</p>
+        </div>
+    </div>
+    <a href="{% url 'edit_email' %}" class="text-blue-400 hover:text-blue-600">
+        <i class="fa fa-edit"></i> Edit
+    </a>
+</div>
+
+        <div class="bg-gray-800 p-4 rounded flex items-center space-x-4">
+            <i class="fa fa-phone text-gray-400"></i>
+            <div>
+                <p class="text-xs text-gray-400">Phone</p>
+                <p class="font-semibold text-white">{{ user.mobile |default:"Not set" }}</p>
+            </div>
+        </div>
+        <div class="bg-gray-800 p-4 rounded flex items-center space-x-4">
+            <i class="fa fa-map-marker-alt text-gray-400"></i>
+            <div>
+                <p class="text-xs text-gray-400">Address</p>
+                <p class="font-semibold text-white">
+    {% if default_address %}
+        {{ default_address.the_address }},
+        {{ default_address.city }},
+        {{ default_address.state }}
+    {% else %}
+        No default address set.
+    {% endif %}
+</p>
+               
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-gray-800 p-6 rounded shadow-lg w-full max-w-md relative text-white">
+        <h2 class="text-xl font-semibold mb-4">Edit Profile</h2>
+        <form method="POST" action="{% url 'edit_profile' %}">
+
+            {% csrf_token %}
+            <div class="space-y-4">
+                <input type="text" name="username" value="{{ user.username }}" class="w-full p-2 bg-gray-900 border border-gray-600 text-white rounded" placeholder="Full Name">
+                
+                <input type="text" name="phone" value="{{ user.mobile }}" class="w-full p-2 bg-gray-900 border border-gray-600 text-white rounded" placeholder="Phone">
+                <div class="max-h-48 overflow-y-auto bg-gray-700 rounded p-2 mt-4">
+    <p class="text-sm font-semibold mb-2">Select Default Address:</p>
+    {% for address in addresses %}
+        <label class="flex items-start space-x-2 mb-2">
+            <input type="radio" name="default_address" value="{{ address.id }}" {% if address.id == default_address.id %}checked{% endif %}>
+            <span>{{ address.the_address }}, {{ address.city }}, {{ address.state }}</span>
+        </label>
+    {% endfor %}
+</div>
+
+            </div>
+            <div class="flex justify-end mt-4 space-x-2">
+                <button type="button" class="px-4 py-2 bg-gray-600 text-white rounded" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditModal() {
+        document.getElementById('editModal').classList.remove('hidden');
+    }
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

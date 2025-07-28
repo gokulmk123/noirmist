@@ -1,0 +1,155 @@
+{% extends 'sidebar.html' %}
+{% load static %}
+
+{% block special_content %}
+<div class="p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Shipping address</h2>
+        <button onclick="toggleModal(true)" class="text-blue-600 hover:underline flex items-center">
+            Add Address <span class="ml-1 text-lg font-bold">＋</span>
+        </button>
+    </div>
+
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for address in addresses %}
+        <div class="border border-gray-300 rounded-md p-4 shadow-sm bg-white relative text-gray-800">
+
+            <form method="POST" action="{% url 'set_default_address' address.id %}" class="absolute top-2 right-2">
+                {% csrf_token %}
+                <button type="submit" title="Set as default" class="text-gray-500 hover:text-green-600">
+                    {% if address.is_default %}
+                        ✅
+                    {% else %}
+                        🔘
+                    {% endif %}
+                </button>
+            </form>
+
+
+            <p class="font-semibold">{{ address.name }}</p>
+            <p>{{ address.the_address }}</p>
+            <p>{{ address.city }}</p>
+            <p>{{ address.state }}</p>
+            <p>{{ address.country }}</p>
+            <p>{{ address.zip_code }}</p>
+            <p>mobile: {{ address.mobile }}</p>
+
+            {% if address.is_default %}
+                <span class="inline-block mt-1 text-green-600 text-sm font-medium">✅ Default address</span>
+            {% endif %}
+
+            <div class="mt-4 flex space-x-4">
+                <a href="javascript:void(0);"
+   onclick="openEditModal(
+       '{{ address.id }}',
+       '{{ address.full_name|escapejs }}',
+       '{{ address.mobile|escapejs }}',
+       '{{ address.the_address|escapejs }}',
+       '{{ address.city|escapejs }}',
+       '{{ address.state|escapejs }}',
+       '{{ address.zip_code|escapejs }}',
+       '{{ address.country|escapejs }}'
+   )"
+   class="text-blue-600 hover:underline">
+   Edit
+</a>
+
+                <form method="POST" action="{% url 'delete_address' address.id %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="text-red-600 hover:underline">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <p>No addresses found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ADD ADDRESS MODAL -->
+<div id="addModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white p-6 rounded-md w-full max-w-xl relative">
+        <button onclick="toggleModal(false)" class="absolute top-3 right-4 text-2xl text-gray-600 hover:text-black">×</button>
+        <h3 class="text-lg font-semibold mb-4">Add Address</h3>
+        <form method="POST" action="{% url 'address' %}">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input type="hidden" name="address_id" id="address_id">
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">Full Name</label>
+                    <input type="text" name="full_name" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">Mobile</label>
+                    <input type="text" name="mobile" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+            </div>
+
+            <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">Address</label>
+                    <input type="text" name="Address" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">District</label>
+                    <input type="text" name="city" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">State</label>
+                    <input type="text" name="state" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">Zip Code</label>
+                    <input type="text" name="zip_code" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700  ">Country</label>
+                    <input type="text" name="country" class="w-full border rounded-md px-3 py-2 text-black" required>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-black">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleModal(show) {
+        const modal = document.getElementById('addModal');
+        if (show) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        } else {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.querySelectorAll('#addModal input').forEach(input => input.value = '');
+        }
+    }
+
+    function openEditModal(id, fullName, mobile, address, city, state, zipCode, country) {
+        toggleModal(true);  // Open the modal
+
+        // Fill the form with existing address data
+        document.getElementById('address_id').value = id;
+        document.querySelector('input[name="full_name"]').value = fullName;
+        document.querySelector('input[name="mobile"]').value = mobile;
+        document.querySelector('input[name="Address"]').value = address;
+        document.querySelector('input[name="city"]').value = city;
+        document.querySelector('input[name="state"]').value = state;
+        document.querySelector('input[name="zip_code"]').value = zipCode;
+        document.querySelector('input[name="country"]').value = country;
+    }
+</script>
+
+{% endblock %}

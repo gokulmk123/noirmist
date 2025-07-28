@@ -1,0 +1,99 @@
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold">Checkout</h2>
+        <p class="text-sm text-gray-500 mt-1">NOIRMIST > Cart > Checkout</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-2 mb-2 text-sm {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" action="{% url 'place_order' %}">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="md:col-span-2 space-y-6">
+                <h3 class="text-xl font-semibold mb-4">Shipping Address</h3>
+                {% if not addresses %}
+                    <p class="text-gray-600 mb-4">No addresses found. Please add one.</p>
+                    <a href="{% url 'address' %}" class="block w-full bg-blue-500 text-white text-center py-2 rounded hover:bg-blue-600 transition">Add Address</a>
+                {% else %}
+                    <div class="mb-4">
+                        <p class="font-medium">Default Address:</p>
+                        {% if default_address %}
+                            <p class="text-gray-600">{{ default_address.full_name }}, {{ default_address.the_address }}, {{ default_address.city }}, {{ default_address.state }}, {{ default_address.zip_code }}, {{ default_address.country }}, Phone: {{ default_address.mobile }}</p>
+                        {% else %}
+                            <p class="text-gray-600">No default address set.</p>
+                        {% endif %}
+                    </div>
+                    <div class="space-y-2 max-h-60 overflow-y-auto">
+                        {% for address in addresses %}
+                            <label class="block border p-2 rounded {% if address.is_default %}bg-green-100{% endif %}">
+                                <input type="radio" name="address_id" value="{{ address.id }}" {% if address.is_default %}checked{% endif %} class="mr-2">
+                                {{ address.full_name }}, {{ address.the_address }}, {{ address.city }}, {{ address.state }}, {{ address.zip_code }}, {{ address.country }}, Phone: {{ address.mobile }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'address' %}" class="mt-4 block w-full bg-blue-500 text-white text-center py-2 rounded hover:bg-blue-600 transition">Add Address</a>
+                {% endif %}
+
+                <h3 class="text-xl font-semibold mt-6 mb-4">Payment Method</h3>
+                <div class="space-y-2 mb-4">
+                    <label class="block">
+                        <input type="radio" name="payment_method" value="cod" checked class="mr-2">
+                        Cash on Delivery
+                    </label>
+                </div>
+            </div>
+
+            <div class="border p-6 rounded shadow-sm bg-white text-gray-800">
+                <h3 class="text-xl font-semibold mb-4">Order Summary</h3>
+                <div class="flex justify-between text-sm mb-2">
+                    <span>Subtotal</span>
+                    <span>₹{{ subtotal|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between text-sm mb-2">
+                    <span>Shipping</span>
+                    <span class="text-green-600">Free</span>
+                </div>
+                <div class="flex justify-between font-semibold text-lg border-t pt-4 mb-4">
+                    <span>Total</span>
+                    <span>₹{{ total|floatformat:2 }}</span>
+                </div>
+                <button type="submit" class="block w-full bg-black text-white text-center py-2 rounded hover:bg-gray-800 transition">Place Order</button>
+            </div>
+        </div>
+    </form>
+
+    <h3 class="text-xl font-semibold mt-6 mb-4 md:col-span-2">Order Items</h3>
+    {% for item in cart_items %}
+        <div class="flex justify-between items-center border rounded p-4 bg-gray-100 shadow-sm">
+            <div class="flex items-center gap-4">
+                {% with variant=item.variant product=variant.product_id %}
+                    {% if item.main_image %}
+                        <img src="{{ item.main_image.image.url }}" alt="{{ product.name }}" class="w-20 h-20 object-cover rounded">
+                    {% else %}
+                        <img src="{% static 'images/default_product.jpg' %}" alt="Default Product Image" class="w-20 h-20 object-cover rounded">
+                    {% endif %}
+                {% endwith %}
+                <div>
+                    <h3 class="font-medium text-lg">{{ item.variant.product_id.name }}</h3>
+                    <p class="text-sm text-gray-500">Size: {{ item.variant.size }} ML</p>
+                    <p class="text-sm text-gray-500">Quantity: {{ item.quantity }}</p>
+                </div>
+            </div>
+            <div>
+                <p class="font-semibold text-lg text-gray-800">₹{{ item.item_total|floatformat:2 }}</p>
+                <p class="text-sm text-gray-500 line-through">₹{{ item.original_total|floatformat:2 }}</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

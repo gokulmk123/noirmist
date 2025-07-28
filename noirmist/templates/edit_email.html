@@ -1,0 +1,33 @@
+{% extends 'user_base.html' %}
+{% block content %}
+
+{% if messages %}
+  <div id="flash-messages" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 space-y-2">
+    {% for message in messages %}
+      <div class="
+        px-4 py-2 rounded-lg shadow 
+        {% if message.tags == 'success' %}
+          bg-green-500 text-white
+        {% elif message.tags == 'error' %}
+          bg-red-500 text-white
+        {% else %}
+          bg-gray-700 text-white
+        {% endif %}
+      ">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
+<div class="max-w-md mx-auto mt-10 bg-gray-900 p-6 rounded shadow-lg">
+    <h2 class="text-white text-2xl font-semibold mb-4">Edit Email</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label for="new_email" class="block text-gray-300 mb-2">New Email Address</label>
+        <input type="email" name="new_email" required class="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-700">
+        <button type="submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Send OTP</button>
+    </form>
+</div>
+{% endblock %}

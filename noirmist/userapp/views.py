@@ -6,8 +6,9 @@ from django.views.decorators.cache import never_cache
 from django.contrib.auth import login,logout,get_backends
 from django.http import JsonResponse
 from django.core.mail import send_mail
-from myapp.models import CustomUser,Product,banner,ProductImage,Category,Brand
-from myapp.forms import UserSignupForm,UserLoginForm
+from myapp.models import CustomUser,Product,banner,ProductImage,Category,Brand,Address,ProductVariant,Cart,CartItem,WishlistItem
+from myapp.models import Order,OrderItem
+from myapp.forms import UserSignupForm,UserLoginForm ,ShippingAddressForm
 from django.contrib.auth.hashers import make_password
 from django.contrib import messages
 from django.utils.timezone import now
@@ -16,6 +17,11 @@ from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 import json
 from django.core.paginator import Paginator
+import os
+from django.contrib.auth import update_session_auth_hash
+from django.http import JsonResponse
+from .utils import get_or_create_cart
+from django.views.decorators.http import require_POST
 
 
  
@@ -66,12 +72,13 @@ def user_signup(request):
 
 @never_cache
 def otp_verify(request):
-    # Redirect if already authenticated
-    if request.user.is_authenticated:
+    purpose = request.session.get('otp_purpose')
+
+    # Prevent redirecting if user is logged in but came for 'edit_email'
+    if request.user.is_authenticated and purpose != 'edit_email':
         if request.user.is_superuser:
             return redirect('admin_dashboard')
         return redirect('home')
-
     if request.method == 'POST':
         entered_otp = request.POST.get('otp')
         original_otp = request.session.get('otp')
@@ -95,6 +102,18 @@ def otp_verify(request):
             elif purpose == 'reset':
                 request.session['reset_user_id'] = user.id
                 return redirect('reset_password')
+            elif purpose == 'edit_email':
+                new_email = request.session.get('new_email')
+                if not new_email:
+                    messages.error(request, "Something went wrong. Please try again.")
+                    return redirect('profile')
+
+                user.email = new_email
+                user.save()
+
+                messages.success(request, "Your email has been updated successfully.")
+                return redirect('profile')
+
 
         else:
             messages.error(request, "Invalid OTP. Please try again.")
@@ -299,12 +318,10 @@ def product_list(request):
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     sort = request.GET.get('sort')
-    query = request.GET.get('q') 
+    query = request.GET.get('q')
 
-    
     products = Product.objects.filter(is_deleted=False, status='listed')
 
-    
     if category_filter:
         products = products.filter(category_id__category_id__in=category_filter)
 
@@ -313,11 +330,10 @@ def product_list(request):
 
     if min_price and max_price:
         try:
-            min_price = float(min_price) / 0.9  
-            max_price = float(max_price) / 0.9  
+            min_price = float(min_price) / 0.9  # Adjust for 10% discount
+            max_price = float(max_price) / 0.9
             products = products.filter(variants__price__range=(min_price, max_price))
         except (ValueError, TypeError):
-            
             pass
 
     if query:
@@ -327,36 +343,42 @@ def product_list(request):
             Q(brand_id__name__icontains=query)
         )
 
-   
+    # Annotate with minimum variant price for sorting
     products = products.annotate(min_price=Min('variants__price'))
 
-   
     if sort == 'price_asc':
         products = products.order_by('min_price')
     elif sort == 'price_desc':
         products = products.order_by('-min_price')
 
-
     products = products.distinct()
 
-   
+    # Prefetch variants (ordered by size) and main images
     products = products.prefetch_related(
-        Prefetch('variants'),
+        Prefetch('variants', queryset=ProductVariant.objects.order_by('size')),
         Prefetch('productimage_set', queryset=ProductImage.objects.filter(is_main=True), to_attr='main_images')
     )
 
-    
+    # Set display attributes based on smallest size variant
     for product in products:
         discount = 10
         product.discount_percent = discount
-       
-        base_price = product.min_price if product.min_price is not None else product.default_price
-        product.discounted_price = round(base_price * (100 - discount) / 100)
+        smallest_variant = product.variants.first()  # First variant after ordering by size
+        if smallest_variant:
+            product.default_variant_id = smallest_variant.id
+            product.display_size = smallest_variant.size
+            product.display_price = smallest_variant.price  # Use display_price instead of default_price
+            product.discounted_price = round(smallest_variant.price * Decimal((100 - discount) / 100), 2)
+        else:
+            product.default_variant_id = None
+            product.display_size = None
+            product.display_price = None
+            product.discounted_price = None
 
     categories = Category.objects.filter(is_deleted=False, status='Listed')
     brands = Brand.objects.filter(is_deleted=False, status='Listed')
 
-    paginator = Paginator(products, 10)  
+    paginator = Paginator(products, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -370,6 +392,7 @@ def product_list(request):
         'page_obj': page_obj,
     })
 
+
 def product_detail(request, product_id):
     product = get_object_or_404(Product, pk=product_id, is_deleted=False, status='listed')
     variants = product.variants.all()
@@ -378,16 +401,15 @@ def product_detail(request, product_id):
     
     selected_variant = variants.first()
 
-    
-    variant_data = [
-        {
-            'size': str(variant.size),  
-            'price': float(variant.price),  
-            'stock': int(variant.stock), 
-            'discounted_price': float(variant.price) * 0.9  
+    variant_data = {
+        str(variant.id): {
+            'size': str(variant.size),
+            'price': float(variant.price),
+            'stock': int(variant.stock),
+            'discounted_price': round(float(variant.price) * 0.9, 2)
         }
         for variant in variants
-    ]
+    }
 
    
     if selected_variant:
@@ -405,11 +427,603 @@ def product_detail(request, product_id):
         'original_price': original_price,
         'discounted_price': discounted_price,
         'discount_percent': discount_percent,
-        'variant_data_json': json.dumps(variant_data), 
+        'variant_data_json': json.dumps(variant_data),  # Important
     }
     return render(request, 'product_detail.html', context)
 
-def cart(request):
-    return render(request,'cart.html')
+
+
+
+
+
+
 def profile(request):
-    return render(request,'profile.html')
+    user = request.user
+    default_address = user.addresses.filter(is_default=True).first()
+
+    addresses=user.addresses.all()
+    
+    return render(request, 'profile.html', {
+        'default_address': default_address,
+        'addresses':addresses
+    })
+
+
+def edit_profile(request):
+    if request.method == 'POST':
+        user = request.user
+        user.username = request.POST.get('username')
+        user.mobile = request.POST.get('phone')
+        user.save()
+
+        selected_address_id = request.POST.get('default_address')
+        if selected_address_id:
+            Address.objects.filter(user=user).update(is_default=False)
+            Address.objects.filter(id=selected_address_id, user=user).update(is_default=True)
+
+        messages.success(request, "Profile updated successfully.")
+        return redirect('profile')
+
+def update_profile_image(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        user = request.user
+        new_image = request.FILES['image']
+
+        # ✅ Delete old image file if it exists
+        if user.image and user.image.name and user.image.name != new_image.name:
+            old_image_path = os.path.join(settings.MEDIA_ROOT, user.image.name)
+            if os.path.exists(old_image_path):
+                os.remove(old_image_path)
+
+        # ✅ Save the new image
+        user.image = new_image
+        user.save()
+
+    return redirect('profile')
+
+def address_list_view(request):
+    if request.method == 'POST':
+        address_id = request.POST.get('address_id')
+
+        if address_id:
+            # UPDATE existing address
+            address = get_object_or_404(Address, id=address_id, user=request.user)
+            address.full_name = request.POST.get('full_name')
+            address.mobile = request.POST.get('mobile')
+            address.city = request.POST.get('city')
+            address.state = request.POST.get('state')
+            address.zip_code = request.POST.get('zip_code')
+            address.country = request.POST.get('country')
+            address.the_address = request.POST.get('Address')
+            address.save()
+        else:
+            # CREATE new address
+            if request.POST.get('is_default'):
+                Address.objects.filter(user=request.user).update(is_default=False)
+            Address.objects.create(
+                user=request.user,
+                full_name=request.POST.get('full_name'),
+                mobile=request.POST.get('mobile'),
+                city=request.POST.get('city'),
+                state=request.POST.get('state'),
+                zip_code=request.POST.get('zip_code'),
+                country=request.POST.get('country'),
+                the_address=request.POST.get('Address'),
+                is_default=bool(request.POST.get('is_default')),
+            )
+
+        return redirect('address')
+
+    addresses = Address.objects.filter(user=request.user).order_by('-is_default')
+    return render(request, 'address.html', {'addresses': addresses})
+
+
+def set_default_address(request, address_id):
+    if request.method == "POST":
+        # Unset all current default addresses
+        Address.objects.filter(user=request.user).update(is_default=False)
+
+        # Set selected address as default
+        address = get_object_or_404(Address, id=address_id, user=request.user)
+        address.is_default = True
+        address.save()
+
+        messages.success(request, "Default address updated.")
+    
+    return redirect('address')
+
+def delete_address( request,address_id):
+    if request.method == 'POST':
+        address = get_object_or_404(Address, id=address_id, user=request.user)
+        address.delete()
+    return redirect('address')
+
+
+
+def edit_email(request):
+    if request.method == 'POST':
+        new_email = request.POST.get('new_email')
+        
+        if CustomUser.objects.filter(email__iexact=new_email).exclude(id=request.user.id).exists():
+            messages.error(request, 'Email already in use by another user.')
+            return render(request, 'edit_email.html', {'email': new_email})
+
+        otp = str(random.randint(100000, 999999))
+        request.session['otp'] = otp
+        request.session['user_id'] = request.user.id
+        request.session['otp_purpose'] = 'edit_email'
+        request.session['new_email'] = new_email
+
+        send_mail(
+            subject='Noirmist - OTP for Email Change',
+            message=f'Your OTP for email change is {otp}',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[new_email],
+            fail_silently=False,
+        )
+        return redirect('otp_verify')
+
+    return render(request, 'edit_email.html')
+
+
+def set_password(request):
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+
+        user = request.user
+
+        if not user.check_password(old_password):
+            messages.error(request, "Old password is incorrect.")
+        elif new_password != confirm_password:
+            messages.error(request, "New passwords do not match.")
+        elif len(new_password) < 8:
+            messages.error(request, "Password must be at least 6 characters.")
+        else:
+            user.set_password(new_password)
+            user.save()
+            update_session_auth_hash(request, user)  # prevent logout
+            messages.success(request, "Password updated successfully.")
+            return redirect('profile')  # or wherever you want to go
+
+    return render(request, 'set_password.html')
+def get_or_create_cart(request):
+    if request.user.is_authenticated:
+        cart, created = Cart.objects.get_or_create(user=request.user, defaults={'user': request.user})
+    else:
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+        cart, created = Cart.objects.get_or_create(session_key=session_key, defaults={'session_key': session_key})
+    return cart
+
+@login_required
+@require_POST
+def add_to_cart(request):
+    variant_id = request.POST.get('variant_id')
+    quantity = int(request.POST.get('quantity', 1))
+
+    try:
+        variant = ProductVariant.objects.get(id=variant_id)
+        if quantity < 1:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'status': 'error', 'message': 'Quantity must be at least 1.'})
+            else:
+                messages.error(request, 'Quantity must be at least 1.')
+                return redirect('product_detail', variant.product_id.id)
+        if quantity > variant.stock:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'status': 'error', 'message': f'Only {variant.stock} items available.'})
+            else:
+                messages.error(request, f'Only {variant.stock} items available.')
+                return redirect('product_detail', variant.product_id.id)
+
+        cart = get_or_create_cart(request)
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, variant=variant)
+        if not created:
+            new_quantity = cart_item.quantity + quantity
+            if new_quantity > variant.stock:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'status': 'error', 'message': f'Only {variant.stock} items available.'})
+                else:
+                    messages.error(request, f'Only {variant.stock} items available.')
+                    return redirect('product_detail', variant.product_id.id)
+            cart_item.quantity = new_quantity
+        else:
+            cart_item.quantity = quantity
+        cart_item.save()
+
+        # Remove from wishlist if it exists
+        wishlist_item = WishlistItem.objects.filter(user=request.user, product=variant.product_id).first()
+        if wishlist_item:
+            wishlist_item.delete()
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'success', 'message': 'Item added to cart'})
+        else:
+            messages.success(request, 'Item added to cart.')
+            return redirect('cart')
+    except ProductVariant.DoesNotExist:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': 'Invalid product variant.'})
+        else:
+            messages.error(request, 'Invalid product variant.')
+            return redirect('product_list')
+    except ValueError:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': 'Invalid quantity.'})
+        else:
+            messages.error(request, 'Invalid quantity.')
+            return redirect('product_list')
+    if not request.user.is_authenticated and not request.session.session_key:
+        return JsonResponse({'status': 'error', 'message': 'Please log in or start a session.'})
+
+    variant_id = request.POST.get('variant_id')
+    quantity = int(request.POST.get('quantity', 1))
+
+    try:
+        variant = ProductVariant.objects.get(id=variant_id)
+        if quantity < 1:
+            return JsonResponse({'status': 'error', 'message': 'Quantity must be at least 1.'})
+        if quantity > variant.stock:
+            return JsonResponse({'status': 'error', 'message': f'Only {variant.stock} items available.'})
+
+        cart = get_or_create_cart(request)
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, variant=variant)
+        if not created:
+            new_quantity = cart_item.quantity + quantity
+            if new_quantity > variant.stock:
+                return JsonResponse({'status': 'error', 'message': f'Only {variant.stock} items available.'})
+            cart_item.quantity = new_quantity
+        else:
+            cart_item.quantity = quantity
+        cart_item.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Item added to cart'})
+    except ProductVariant.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Invalid product variant.'})
+    except ValueError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid quantity.'})
+
+def cart(request):
+    cart = get_or_create_cart(request)
+    cart_items = cart.items.select_related('variant__product_id').prefetch_related('variant__images', 'variant__product_id__productimage_set')
+    
+    for item in cart_items:
+        # Calculate discounted price (10% off)
+        item.discounted_price = Decimal(str(item.variant.price)) * Decimal('0.9')
+        # Try to get the variant-specific image first
+        item.main_image = item.variant.images.filter(is_main=True).first()
+        if not item.main_image:
+            # Fall back to the product's main image
+            item.main_image = item.variant.product_id.productimage_set.filter(is_main=True).first()
+    
+    context = {'cart_items': cart_items}
+    try:
+        subtotal = sum(item.discounted_price * item.quantity for item in cart_items if item.variant.product_id)
+        
+        total = round(subtotal , 2)
+        context.update({'subtotal': subtotal,  'total': total})
+    except Exception as e:
+        print(f"Error calculating totals: {e}")
+
+    return render(request, 'cart.html', context)
+
+@require_POST
+def update_cart_item(request):
+    if not request.user.is_authenticated and not request.session.session_key:
+        return JsonResponse({'status': 'error', 'message': 'Please log in or start a session.'})
+
+    try:
+        # Parse JSON payload from request.body
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        quantity = int(data.get('quantity'))
+
+        if not item_id or quantity < 1:
+            return JsonResponse({'status': 'error', 'message': 'Invalid item ID or quantity.'})
+
+        cart = get_or_create_cart(request)
+        cart_item = get_object_or_404(CartItem, id=item_id, cart=cart)
+        variant = cart_item.variant
+
+        if quantity > variant.stock:
+            return JsonResponse({'status': 'error', 'message': f'Only {variant.stock} items available.'})
+
+        cart_item.quantity = quantity
+        cart_item.save()
+
+        # Recalculate cart totals using discounted price
+        cart_items = cart.items.select_related('variant__product_id')
+        subtotal = sum((Decimal(str(item.variant.price)) * Decimal('0.9')) * item.quantity for item in cart_items if item.variant.product_id)
+        
+       
+        total = round(subtotal , 2)
+
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Cart updated',
+            'subtotal': float(subtotal),
+            
+            'total': float(total)
+        })
+    except CartItem.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Item not found.'})
+    except ValueError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid quantity.'})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON payload.'})
+    except Exception as e:
+        print(f"Error updating cart item: {e}")
+        return JsonResponse({'status': 'error', 'message': f'Server error: {str(e)}'})
+
+@require_POST
+def remove_cart_item(request):
+    # Check if user is authenticated or session exists
+    if not request.user.is_authenticated and not request.session.session_key:
+        return JsonResponse({'status': 'error', 'message': 'Please log in or start a session.'})
+
+    try:
+        # Parse JSON payload from request.body
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        
+        if not item_id:
+            return JsonResponse({'status': 'error', 'message': 'No item_id provided.'})
+
+        # Get the cart
+        cart = get_or_create_cart(request)
+        
+        # Debug: Log the cart and item_id
+        print(f"Cart ID: {cart.id}, Item ID: {item_id}")
+
+        # Fetch and delete the cart item
+        cart_item = CartItem.objects.get(id=item_id, cart=cart)
+        cart_item.delete()
+
+        # Recalculate cart totals using discounted price
+        cart_items = cart.items.select_related('variant__product_id')
+        subtotal = sum((Decimal(str(item.variant.price)) * Decimal('0.9')) * item.quantity for item in cart_items if item.variant.product_id)
+        
+        total = round(subtotal, 2)
+
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Item removed from cart',
+            'subtotal': float(subtotal),
+           
+            'total': float(total)
+        })
+    except CartItem.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Item not found.'})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON payload.'})
+    except Exception as e:
+        print(f"Error removing cart item: {e}")
+        return JsonResponse({'status': 'error', 'message': f'Server error: {str(e)}'})
+    
+
+
+from django.utils import timezone
+from django.http import HttpResponseNotAllowed
+
+
+
+@login_required
+def add_to_wishlist(request):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'], 'Method not allowed. Use POST to add to wishlist.')
+    
+    product_id = request.POST.get('product_id')
+    try:
+        product = Product.objects.get(id=product_id)
+        default_variant = product.variants.filter(stock__gt=0).order_by('size').first()
+        if not default_variant:
+            messages.error(request, 'No available variants for this product.')
+            return redirect('product_list')
+
+        cart = get_or_create_cart(request)
+        cart_item = cart.items.filter(variant=default_variant).first()
+        if cart_item:
+            messages.info(request, 'This item is already in your cart.')
+            return redirect('product_list')
+
+        wishlist_item, created = WishlistItem.objects.get_or_create(
+            user=request.user,
+            product=product,
+            defaults={'created_at': timezone.now()}
+        )
+        if created:
+            messages.success(request, 'Added to wishlist.')
+        else:
+            messages.info(request, 'Item is already in your wishlist.')
+        return redirect('wishlist')
+    except Product.DoesNotExist:
+        messages.error(request, 'Product not found.')
+        return redirect('product_list')
+    except Exception as e:
+        messages.error(request, f'An error occurred: {str(e)}')
+        return redirect('product_list')
+@login_required
+def wishlist(request):
+    # Display wishlist (GET request)
+    wishlist_items = WishlistItem.objects.filter(user=request.user).select_related('product').prefetch_related('product__productimage_set', 'product__variants__images')
+    cart = get_or_create_cart(request)
+    cart_variant_ids = cart.items.values_list('variant_id', flat=True)
+
+    filtered_wishlist_items = []
+    for item in wishlist_items:
+        default_variant = item.product.variants.filter(stock__gt=0).order_by('size').first()
+        if default_variant and default_variant.id not in cart_variant_ids:
+            # Try to get the variant-specific main image first
+            main_image = default_variant.images.filter(is_main=True).first()
+            if not main_image:
+                # Fall back to the product's main image
+                main_image = item.product.productimage_set.filter(is_main=True).first()
+
+            # Create a dictionary to hold dynamic attributes
+            item_data = {
+                'product': item.product,
+                'default_variant_id': default_variant.id,
+                'discounted_price': default_variant.price * Decimal('0.9'),
+                'default_price': default_variant.price,
+                'discount_percent': 10,
+                'main_image': main_image,  # Add main_image to the dictionary
+                'wishlist_item_id': item.id,  # Add wishlist item ID for template
+                'created_at': item.created_at,  # Add created_at for display
+            }
+            filtered_wishlist_items.append(item_data)
+
+    context = {'wishlist_items': filtered_wishlist_items}
+    return render(request, 'wishlist.html', context)
+
+@login_required
+def remove_from_wishlist(request, item_id):
+    try:
+        wishlist_item = WishlistItem.objects.get(id=item_id, user=request.user)
+        wishlist_item.delete()
+        messages.success(request, 'Removed from wishlist.')
+    except WishlistItem.DoesNotExist:
+        messages.error(request, 'Item not found.')
+    return redirect('wishlist')
+
+@login_required
+def checkout(request):
+    cart = get_or_create_cart(request)
+    cart_items = cart.items.select_related('variant__product_id').prefetch_related('variant__images', 'variant__product_id__productimage_set')
+
+    if not cart_items:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart')
+
+    # Filter out unavailable items and calculate totals
+    valid_items = []
+    for item in cart_items:
+        if item.quantity > item.variant.stock or item.variant.product_id.status != 'listed' or item.variant.product_id.category_id.status != 'Listed':
+            item.delete()
+            messages.warning(request, f'{item.variant.product_id.name} ({item.variant.size} ML) is unavailable and removed.')
+        else:
+            item.discounted_price = Decimal(str(item.variant.price)) * Decimal('0.9')  # 10% discount
+            item.item_total = item.discounted_price * item.quantity  # Discounted total
+            item.original_total = Decimal(str(item.variant.price)) * item.quantity  # Original total
+            # Attach main image logic
+            item.main_image = item.variant.images.filter(is_main=True).first()
+            if not item.main_image:
+                item.main_image = item.variant.product_id.productimage_set.filter(is_main=True).first()
+            valid_items.append(item)
+
+    if not valid_items:
+        messages.error(request, 'Your cart is empty or contains unavailable items.')
+        return redirect('cart')
+
+    try:
+        subtotal = sum(item.item_total for item in valid_items)
+        total = round(subtotal, 2)  # No tax, total equals subtotal
+    except Exception as e:
+        print(f"Error calculating totals: {e}")
+        messages.error(request, 'Error calculating cart totals.')
+        return redirect('cart')
+
+    addresses = Address.objects.filter(user=request.user)
+    default_address = addresses.filter(is_default=True).first()
+
+    if request.method == 'POST':
+        address_id = request.POST.get('address_id')
+        payment_method = request.POST.get('payment_method')
+        print(f"Submitted address_id: {address_id}")  # Debug print
+        if not address_id:
+            messages.error(request, 'Please select a shipping address.')
+            return redirect('checkout')
+        if payment_method != 'cod':
+            messages.error(request, 'Only Cash on Delivery is available.')
+            return redirect('checkout')
+        try:
+            selected_address = addresses.get(id=address_id)
+            request.session['address_id'] = address_id  # Store the selected address ID
+            return redirect('place_order')
+        except Address.DoesNotExist:
+            messages.error(request, 'Invalid address selected.')
+            return redirect('checkout')
+
+    context = {
+        'cart_items': valid_items,
+        'subtotal': subtotal,
+        'total': total,
+        'addresses': addresses,
+        'default_address': default_address,
+    }
+    return render(request, 'checkout.html', context)
+
+@login_required
+def place_order(request):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    cart = get_or_create_cart(request)
+    cart_items = cart.items.select_related('variant__product_id')
+
+    if not cart_items:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart')
+
+    # Validate stock and availability
+    valid_items = []
+    for item in cart_items:
+        if item.quantity <= item.variant.stock and item.variant.product_id.status == 'listed' and item.variant.product_id.category_id.status == 'Listed':
+            item.discounted_price = Decimal(str(item.variant.price)) * Decimal('0.9')
+            item.item_total = item.discounted_price * item.quantity
+            valid_items.append(item)
+        else:
+            item.delete()
+            messages.warning(request, f'{item.variant.product_id.name} ({item.variant.size} ML) is unavailable.')
+
+    if not valid_items:
+        messages.error(request, 'Your cart is empty or contains unavailable items.')
+        return redirect('cart')
+
+    try:
+        subtotal = sum(item.item_total for item in valid_items)
+        total = round(subtotal, 2)  # No tax
+    except Exception as e:
+        print(f"Error calculating totals: {e}")
+        messages.error(request, 'Error calculating order totals.')
+        return redirect('cart')
+
+    address_id = request.session.get('address_id')
+    print(f"Session address_id: {address_id}")  # Debug print
+    if not address_id:
+        messages.error(request, 'No shipping address selected. Please try again.')
+        return redirect('checkout')
+    address = get_object_or_404(Address, id=address_id, user=request.user)
+    shipping_address = f"{address.full_name}, {address.the_address}, {address.city}, {address.state}, {address.zip_code}, {address.country}, Phone: {address.mobile}"
+
+    order = Order.objects.create(
+        user=request.user,
+        total=total,
+        status='pending',
+        shipping_address=shipping_address
+    )
+
+    for item in valid_items:
+        OrderItem.objects.create(
+            order=order,
+            variant=item.variant,
+            quantity=item.quantity,
+            price=item.discounted_price
+        )
+        item.variant.stock -= item.quantity
+        item.variant.save()
+
+    cart.items.all().delete()
+    if 'address_id' in request.session:
+        del request.session['address_id']
+
+    messages.success(request, f'Order {order.id} placed successfully!')
+    return redirect('order_confirmation', order_id=order.id)
+@login_required
+def order_confirmation(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    context = {'order': order}
+    return render(request, 'order_confirmation.html', context)

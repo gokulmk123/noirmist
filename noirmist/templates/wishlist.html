@@ -1,0 +1,81 @@
+{% extends 'sidebar.html' %}
+{% load static %}
+
+{% block special_content %}
+<div class="p-6">
+    <h2 class="text-2xl font-semibold mb-6">Wishlist</h2>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-2 mb-2 text-sm {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% if wishlist_items %}
+        <div class="space-y-6">
+            {% for item in wishlist_items %}
+                <div class="flex items-center justify-between bg-gray-700 p-4 rounded-lg" data-wishlist-id="{{ item.wishlist_item_id }}">
+                    <div class="flex items-center space-x-4">
+                        {% if item.main_image %}
+                            <img src="{{ item.main_image.image.url }}" alt="{{ item.product.name|default:'Product Image' }}" class="w-16 h-16 object-cover rounded">
+                        {% else %}
+                            <img src="{% static 'images/default_product.jpg' %}" alt="Default Product Image" class="w-16 h-16 object-cover rounded">
+                        {% endif %}
+                        <div>
+                            <h3 class="text-lg font-medium">{{ item.product.name|default:"No name" }}</h3>
+                            <p class="text-sm text-gray-400">Added on {{ item.created_at|date:"d M Y" }}</p>
+                            <a href="{% url 'remove_from_wishlist' item.wishlist_item_id %}" class="text-red-400 text-sm hover:underline">Remove Item</a>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-lg font-semibold">₹{{ item.discounted_price|floatformat:2 }}</span>
+                        <form method="POST" action="{% url 'add_to_cart' %}" class="add-to-cart-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="variant_id" value="{{ item.default_variant_id }}">
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500">Add to Cart</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-400 text-center">Your wishlist is empty.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.querySelectorAll('.add-to-cart-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const wishlistItem = form.closest('[data-wishlist-id]').getAttribute('data-wishlist-id');
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message); // Replace with a toast notification if preferred
+                    // Remove the wishlist item from the UI
+                    const itemDiv = form.closest('.flex');
+                    if (itemDiv) itemDiv.remove();
+                } else {
+                    alert(data.message || 'Failed to add item to cart.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+    });
+</script>
+{% endblock %}

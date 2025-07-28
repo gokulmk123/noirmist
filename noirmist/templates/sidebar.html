@@ -1,36 +1,60 @@
-    {% extends 'user_base.html' %}
-    {% load static %}
+{% extends 'user_base.html' %}
+{% load static %}
 
-    {% block content %}
-    <div class="w-full p-4 space-y-4 text-gray-700 text-sm font-medium">
-    <a href="{% url 'profile' %}" class="flex items-center space-x-2 hover:text-black">
-        <i class="fa fa-user"></i>
-        <span>Profile</span>
-    </a>
-    <a href="" class="flex items-center space-x-2 hover:text-black">
-        <i class="fa fa-shopping-bag"></i>
-        <span>Orders</span>
-    </a>
-    <a href="" class="flex items-center space-x-2 hover:text-black">
-        <i class="fa fa-wallet"></i>
-        <span>Wallet</span>
-    </a>
-    <a href="" class="flex items-center space-x-2 hover:text-black">
-        <i class="fa fa-map-marker-alt"></i>
-        <span>Address</span>
-    </a>
-    <a href="" class="flex items-center space-x-2 hover:text-black">
-        <i class="fa fa-lock"></i>
-        <span>Password</span>
-    </a>
-    <a href="" class="flex items-center space-x-2 hover:text-black">
-        <i class="fa fa-gift"></i>
-        <span>Refer & Earn</span>
-    </a>
-    <a href="" class="flex items-center space-x-2 text-red-500 hover:text-red-600">
-        <i class="fa fa-sign-out-alt"></i>
-        <span>Logout</span>
-    </a>
+{% block content %}
+<div class="flex min-h-screen bg-gray-900 text-white font-medium">
+    <!-- Sidebar -->
+    <div class="w-1/4 bg-gray-800 p-6 space-y-6 border-r border-gray-700">
+        <div class="text-xl font-bold text-center mb-4 tracking-wide text-white">My Account</div>
+
+        <a href="{% url 'profile' %}" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-user text-gray-300"></i>
+            <span>Profile</span>
+        </a>
+
+        <a href="{% url 'wishlist' %}" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-shopping-bag text-gray-300"></i>
+            <span>Whishlist</span>
+        </a>
+
+        <a href="#" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-shopping-bag text-gray-300"></i>
+            <span>Orders</span>
+        </a>
+
+        <a href="#" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-wallet text-gray-300"></i>
+            <span>Wallet</span>
+        </a>
+
+        <a href="{% url 'address' %}" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-map-marker-alt text-gray-300"></i>
+            <span>Address</span>
+        </a>
+
+        <a href="{% url 'set_password' %}" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-lock text-gray-300"></i>
+            <span>Password</span>
+        </a>
+
+        <a href="#" class="flex items-center space-x-3 px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fa fa-gift text-gray-300"></i>
+            <span>Refer & Earn</span>
+        </a>
+
+        <a href="#" class="flex items-center space-x-3 px-4 py-2 rounded-md text-red-400 hover:text-red-500 hover:bg-gray-700 transition">
+            <i class="fa fa-sign-out-alt"></i>
+            <span>Logout</span>
+        </a>
     </div>
 
-    {% endblock %}
+    <!-- Main Content -->
+    <div class="w-3/4 p-8">
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+            {% block special_content %}
+            <!-- Your profile content will be inserted here -->
+            {% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

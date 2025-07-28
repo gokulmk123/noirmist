@@ -143,3 +143,10 @@ class UserLoginForm(forms.Form):
 
         self.user = user
         return cleaned_data
+    
+class ShippingAddressForm(forms.Form):
+    full_name = forms.CharField(max_length=100, required=True)
+    address = forms.CharField(widget=forms.Textarea(attrs={'rows': 4}), required=True)
+    city = forms.CharField(max_length=100, required=True)
+    phone = forms.CharField(max_length=15, required=True)
+
