@@ -43,5 +43,10 @@ urlpatterns = [
     path('checkout/', views.checkout, name='checkout'),
     path('place-order/', views.place_order, name='place_order'),
     path('order-confirmation/<int:order_id>/', views.order_confirmation, name='order_confirmation'),
+
+    path('order/<int:order_id>/', views.order_detail, name='order_detail'),
+    path('orders/', views.orders, name='orders'),
+
+    path('invoice/<int:order_id>/pdf/', views.generate_invoice_pdf, name='generate_invoice_pdf'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -635,7 +635,7 @@ def add_to_cart(request):
             cart_item.quantity = quantity
         cart_item.save()
 
-        # Remove from wishlist if it exists
+        
         wishlist_item = WishlistItem.objects.filter(user=request.user, product=variant.product_id).first()
         if wishlist_item:
             wishlist_item.delete()
@@ -692,12 +692,12 @@ def cart(request):
     cart_items = cart.items.select_related('variant__product_id').prefetch_related('variant__images', 'variant__product_id__productimage_set')
     
     for item in cart_items:
-        # Calculate discounted price (10% off)
+        
         item.discounted_price = Decimal(str(item.variant.price)) * Decimal('0.9')
-        # Try to get the variant-specific image first
+        
         item.main_image = item.variant.images.filter(is_main=True).first()
         if not item.main_image:
-            # Fall back to the product's main image
+            
             item.main_image = item.variant.product_id.productimage_set.filter(is_main=True).first()
     
     context = {'cart_items': cart_items}
@@ -717,7 +717,7 @@ def update_cart_item(request):
         return JsonResponse({'status': 'error', 'message': 'Please log in or start a session.'})
 
     try:
-        # Parse JSON payload from request.body
+       
         data = json.loads(request.body)
         item_id = data.get('item_id')
         quantity = int(data.get('quantity'))
@@ -735,7 +735,7 @@ def update_cart_item(request):
         cart_item.quantity = quantity
         cart_item.save()
 
-        # Recalculate cart totals using discounted price
+        
         cart_items = cart.items.select_related('variant__product_id')
         subtotal = sum((Decimal(str(item.variant.price)) * Decimal('0.9')) * item.quantity for item in cart_items if item.variant.product_id)
         
@@ -761,29 +761,29 @@ def update_cart_item(request):
 
 @require_POST
 def remove_cart_item(request):
-    # Check if user is authenticated or session exists
+   
     if not request.user.is_authenticated and not request.session.session_key:
         return JsonResponse({'status': 'error', 'message': 'Please log in or start a session.'})
 
     try:
-        # Parse JSON payload from request.body
+        
         data = json.loads(request.body)
         item_id = data.get('item_id')
         
         if not item_id:
             return JsonResponse({'status': 'error', 'message': 'No item_id provided.'})
 
-        # Get the cart
+       
         cart = get_or_create_cart(request)
         
-        # Debug: Log the cart and item_id
+        
         print(f"Cart ID: {cart.id}, Item ID: {item_id}")
 
-        # Fetch and delete the cart item
+        
         cart_item = CartItem.objects.get(id=item_id, cart=cart)
         cart_item.delete()
 
-        # Recalculate cart totals using discounted price
+        
         cart_items = cart.items.select_related('variant__product_id')
         subtotal = sum((Decimal(str(item.variant.price)) * Decimal('0.9')) * item.quantity for item in cart_items if item.variant.product_id)
         
@@ -848,7 +848,7 @@ def add_to_wishlist(request):
         return redirect('product_list')
 @login_required
 def wishlist(request):
-    # Display wishlist (GET request)
+    
     wishlist_items = WishlistItem.objects.filter(user=request.user).select_related('product').prefetch_related('product__productimage_set', 'product__variants__images')
     cart = get_or_create_cart(request)
     cart_variant_ids = cart.items.values_list('variant_id', flat=True)
@@ -857,22 +857,22 @@ def wishlist(request):
     for item in wishlist_items:
         default_variant = item.product.variants.filter(stock__gt=0).order_by('size').first()
         if default_variant and default_variant.id not in cart_variant_ids:
-            # Try to get the variant-specific main image first
+            
             main_image = default_variant.images.filter(is_main=True).first()
             if not main_image:
-                # Fall back to the product's main image
+                
                 main_image = item.product.productimage_set.filter(is_main=True).first()
 
-            # Create a dictionary to hold dynamic attributes
+            
             item_data = {
                 'product': item.product,
                 'default_variant_id': default_variant.id,
                 'discounted_price': default_variant.price * Decimal('0.9'),
                 'default_price': default_variant.price,
                 'discount_percent': 10,
-                'main_image': main_image,  # Add main_image to the dictionary
-                'wishlist_item_id': item.id,  # Add wishlist item ID for template
-                'created_at': item.created_at,  # Add created_at for display
+                'main_image': main_image,  
+                'wishlist_item_id': item.id,  
+                'created_at': item.created_at,  
             }
             filtered_wishlist_items.append(item_data)
 
@@ -898,16 +898,15 @@ def checkout(request):
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
 
-    # Filter out unavailable items and calculate totals
     valid_items = []
     for item in cart_items:
         if item.quantity > item.variant.stock or item.variant.product_id.status != 'listed' or item.variant.product_id.category_id.status != 'Listed':
             item.delete()
             messages.warning(request, f'{item.variant.product_id.name} ({item.variant.size} ML) is unavailable and removed.')
         else:
-            item.discounted_price = Decimal(str(item.variant.price)) * Decimal('0.9')  # 10% discount
-            item.item_total = item.discounted_price * item.quantity  # Discounted total
-            item.original_total = Decimal(str(item.variant.price)) * item.quantity  # Original total
+            item.discounted_price = Decimal(str(item.variant.price)) * Decimal('0.9') 
+            item.item_total = item.discounted_price * item.quantity 
+            item.original_total = Decimal(str(item.variant.price)) * item.quantity 
             # Attach main image logic
             item.main_image = item.variant.images.filter(is_main=True).first()
             if not item.main_image:
@@ -920,7 +919,7 @@ def checkout(request):
 
     try:
         subtotal = sum(item.item_total for item in valid_items)
-        total = round(subtotal, 2)  # No tax, total equals subtotal
+        total = round(subtotal, 2)  
     except Exception as e:
         print(f"Error calculating totals: {e}")
         messages.error(request, 'Error calculating cart totals.')
@@ -928,24 +927,6 @@ def checkout(request):
 
     addresses = Address.objects.filter(user=request.user)
     default_address = addresses.filter(is_default=True).first()
-
-    if request.method == 'POST':
-        address_id = request.POST.get('address_id')
-        payment_method = request.POST.get('payment_method')
-        print(f"Submitted address_id: {address_id}")  # Debug print
-        if not address_id:
-            messages.error(request, 'Please select a shipping address.')
-            return redirect('checkout')
-        if payment_method != 'cod':
-            messages.error(request, 'Only Cash on Delivery is available.')
-            return redirect('checkout')
-        try:
-            selected_address = addresses.get(id=address_id)
-            request.session['address_id'] = address_id  # Store the selected address ID
-            return redirect('place_order')
-        except Address.DoesNotExist:
-            messages.error(request, 'Invalid address selected.')
-            return redirect('checkout')
 
     context = {
         'cart_items': valid_items,
@@ -955,7 +936,6 @@ def checkout(request):
         'default_address': default_address,
     }
     return render(request, 'checkout.html', context)
-
 @login_required
 def place_order(request):
     if request.method != 'POST':
@@ -968,7 +948,6 @@ def place_order(request):
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
 
-    # Validate stock and availability
     valid_items = []
     for item in cart_items:
         if item.quantity <= item.variant.stock and item.variant.product_id.status == 'listed' and item.variant.product_id.category_id.status == 'Listed':
@@ -985,17 +964,22 @@ def place_order(request):
 
     try:
         subtotal = sum(item.item_total for item in valid_items)
-        total = round(subtotal, 2)  # No tax
+        total = round(subtotal, 2)
+        discount_amount = Decimal('0.00')  # Example; calculate based on coupon if applicable
     except Exception as e:
         print(f"Error calculating totals: {e}")
         messages.error(request, 'Error calculating order totals.')
         return redirect('cart')
 
-    address_id = request.session.get('address_id')
-    print(f"Session address_id: {address_id}")  # Debug print
+    address_id = request.POST.get('address_id')
+    payment_method = request.POST.get('payment_method', 'cod')
     if not address_id:
         messages.error(request, 'No shipping address selected. Please try again.')
         return redirect('checkout')
+    if payment_method != 'cod':
+        messages.error(request, 'Only Cash on Delivery is available.')
+        return redirect('checkout')
+
     address = get_object_or_404(Address, id=address_id, user=request.user)
     shipping_address = f"{address.full_name}, {address.the_address}, {address.city}, {address.state}, {address.zip_code}, {address.country}, Phone: {address.mobile}"
 
@@ -1003,7 +987,12 @@ def place_order(request):
         user=request.user,
         total=total,
         status='pending',
-        shipping_address=shipping_address
+        shipping_address=shipping_address,
+        discount_amount=discount_amount,
+        payment_method=payment_method,
+        payment_status='pending',
+        delivery_date=None,  # Set dynamically if known
+        cancelled_at=None
     )
 
     for item in valid_items:
@@ -1011,19 +1000,89 @@ def place_order(request):
             order=order,
             variant=item.variant,
             quantity=item.quantity,
-            price=item.discounted_price
+            price=item.discounted_price,
+            total=item.item_total
         )
         item.variant.stock -= item.quantity
         item.variant.save()
 
     cart.items.all().delete()
-    if 'address_id' in request.session:
-        del request.session['address_id']
-
     messages.success(request, f'Order {order.id} placed successfully!')
     return redirect('order_confirmation', order_id=order.id)
+
+
 @login_required
 def order_confirmation(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    context = {'order': order}
+    order_items = OrderItem.objects.filter(order=order).select_related('variant__product_id')
+    context = {
+        'order': order,
+        'order_items': order_items,
+    }
     return render(request, 'order_confirmation.html', context)
+
+@login_required
+def order_detail(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    order_items = OrderItem.objects.filter(order=order).select_related('variant__product_id')
+    address = Address.objects.filter(user=request.user, is_default=True).first()
+    
+    # Attach main_image to each order item
+    for item in order_items:
+        item.main_image = item.variant.images.filter(is_main=True).first() or item.variant.product_id.productimage_set.filter(is_main=True).first()
+    
+    context = {
+        'order': order,
+        'order_items': order_items,
+        'address': address,
+        'stages': ['Processing', 'Packed', 'Shipped', 'Delivered', 'Return', 'Returned', 'Cancelled'],
+        'current_stage': order.status if order.status in ['pending', 'processing', 'shipped', 'delivered'] else 'pending',
+    }
+    return render(request, 'order_detail.html', context)
+
+@login_required
+def orders(request):
+    sort_order = request.GET.get('sort', 'newest')
+    ordering = '-created_at' if sort_order == 'newest' else 'created_at'
+
+    orders = Order.objects.filter(user=request.user).order_by(ordering).prefetch_related(
+        'items__variant__images', 'items__variant__product_id__productimage_set'
+    )
+
+    order_list = []
+    for order in orders:
+        items = list(order.items.all())
+        for item in items:
+            item.main_image = (
+                item.variant.images.filter(is_main=True).first() or 
+                item.variant.product_id.productimage_set.filter(is_main=True).first()
+            )
+        order.first_item = items[0] if items else None
+        order.items_with_images = items
+        order_list.append(order)
+
+    return render(request, 'orders.html', {
+        'orders': order_list,
+    })
+
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from django.http import HttpResponse
+
+@login_required
+def generate_invoice_pdf(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    order_items = OrderItem.objects.filter(order=order).select_related('variant__product_id')
+    address = Address.objects.filter(user=request.user, is_default=True).first()
+    
+    html_string = render_to_string('invoice.html', {
+        'order': order,
+        'order_items': order_items,
+        'address': address,
+    })
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="invoice_{order.id}.pdf"'
+    HTML(string=html_string).write_pdf(response)
+    
+    return response

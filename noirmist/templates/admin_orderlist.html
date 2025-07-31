@@ -1,0 +1,89 @@
+{% extends 'adminbase.html' %}
+{% load static %}
+
+{% block content %}
+<div class="p-6">
+    <h1 class="text-3xl font-bold mb-6 text-white">Admin Order List</h1>
+
+    <!-- Filter and Sort Controls -->
+    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+        <!-- Filter by Status -->
+        <form method="get" class="flex items-center space-x-2">
+            <select name="status" class="p-2 border border-gray-700 rounded bg-gray-800 text-white">
+                <option value="">All Statuses</option>
+                {% for status in status_choices %}
+                    <option value="{{ status }}" {% if request.GET.status == status %}selected{% endif %}>{{ status|title }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Filter</button>
+        </form>
+
+        <!-- Sort Options -->
+        <div class="flex space-x-4 text-sm text-gray-400">
+            <a href="?sort=newest{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="hover:text-white {% if request.GET.sort == 'newest' %}text-white font-bold{% endif %}">Newest</a>
+            <a href="?sort=oldest{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="hover:text-white {% if request.GET.sort == 'oldest' %}text-white font-bold{% endif %}">Oldest</a>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse bg-gray-900">
+            <thead>
+                <tr class="border-b border-gray-700">
+                    <th class="p-3 text-white">Order ID</th>
+                    <th class="p-3 text-white">Image</th>
+                    <th class="p-3 text-white">Product</th>
+                    <th class="p-3 text-white">User</th>
+                    <th class="p-3 text-white">Date</th>
+                    <th class="p-3 text-white">Status</th>
+                    <th class="p-3 text-white">Total</th>
+                    <th class="p-3 text-white">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                    <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                        <td class="p-3 text-gray-300">{{ order.id }}</td>
+                        <td class="p-3">
+                            {% if order.first_item and order.first_item.main_image %}
+                                <img src="{{ order.first_item.main_image.image.url }}" alt="{{ order.first_item.variant.product_id.name }}" class="w-12 h-12 object-cover rounded">
+                            {% else %}
+                                <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center">
+                                    <span class="text-gray-500 text-xs">No Image</span>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="p-3 text-gray-300">{% if order.first_item %}{{ order.first_item.variant.product_id.name }}{% else %}No Items{% endif %}</td>
+                        <td class="p-3 text-gray-300">{{ order.user.username }}</td>
+                        <td class="p-3 text-gray-300">{{ order.created_at|date:"F d, Y H:i" }}</td>
+                        <td class="p-3 text-gray-300">{{ order.status|title }}</td>
+                        <td class="p-3 text-gray-300">₹{{ order.total|floatformat:2 }}</td>
+                        <td class="p-3">
+                            <a href="{% url 'admin_order_detail' order.id %}" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">View Details</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8" class="p-3 text-gray-400 text-center">No orders found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if orders.has_other_pages %}
+        <div class="mt-6 flex justify-center">
+            {% if orders.has_previous %}
+                <a href="?page={{ orders.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" class="px-4 py-2 bg-gray-700 text-white rounded-l hover:bg-gray-600">&laquo; Previous</a>
+            {% endif %}
+            {% for num in orders.paginator.page_range %}
+                <a href="?page={{ num }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" class="px-4 py-2 {% if orders.number == num %}bg-blue-600 text-white{% else %}bg-gray-700 text-white{% endif %} hover:bg-gray-600">{{ num }}</a>
+            {% endfor %}
+            {% if orders.has_next %}
+                <a href="?page={{ orders.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" class="px-4 py-2 bg-gray-700 text-white rounded-r hover:bg-gray-600">Next &raquo;</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

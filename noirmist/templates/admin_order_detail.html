@@ -1,0 +1,93 @@
+
+{% extends 'adminbase.html' %}
+{% load static %}
+
+{% block content %}
+<div class="p-6">
+    <h1 class="text-3xl font-bold mb-6 text-white">Order #{{ order.id }} Details</h1>
+
+    <div class="border border-gray-700 rounded p-4 mb-4 bg-gray-800">
+        <div class="mb-4">
+            <h2 class="text-xl font-semibold text-white">Order Summary</h2>
+            <div class="text-sm text-gray-300">
+                <p>Created At: {{ order.created_at|date:"F d, Y H:i" }}</p>
+                <p>Total: ₹{{ order.total|floatformat:2 }}</p>
+                <p>Status: {{ order.status|title }}</p>
+                <p>User: {{ order.user.username }}</p>
+                <p>Shipping Address: {{ order.shipping_address|default:"Not provided" }}</p>
+                <p>Payment Method: {{ order.payment_method|title }}</p>
+                <p>Payment Status: {{ order.payment_status|title }}</p>
+                {% if order.cancelled_at %}
+                    <p>Cancelled At: {{ order.cancelled_at|date:"F d, Y H:i" }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <h2 class="text-xl font-semibold text-white">Order Items</h2>
+            {% for item in order_items %}
+                <div class="flex items-center mb-4 bg-gray-700 p-2 rounded">
+                    {% if item.main_image %}
+                        <img src="{{ item.main_image.image.url }}" alt="{{ item.variant.product_id.name }}" class="w-16 h-16 object-cover rounded mr-4">
+                    {% else %}
+                        <div class="w-16 h-16 bg-gray-600 rounded flex items-center justify-center mr-4">
+                            <span class="text-gray-400">No Image</span>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <p class="text-sm font-semibold text-white">{{ item.variant.product_id.name }}</p>
+                        <p class="text-xs text-gray-400">Size: {{ item.variant.size }} | Quantity: {{ item.quantity }} | Price: ₹{{ item.price|floatformat:2 }}</p>
+                        <p class="text-xs text-gray-400">Total: ₹{{ item.total|floatformat:2 }}</p>
+                    </div>
+                </div>
+
+                <!-- Return Status Update -->
+                <form method="post" action="{% url 'admin_order_detail' order.id %}" class="mt-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_return">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <select name="return_status" class="p-2 border border-gray-700 rounded bg-gray-900 text-white mr-2">
+                        {% for status in return_status_choices %}
+                            <option value="{{ status }}" {% if item.return_status == status %}selected{% endif %}>{{ status|title }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Update Return</button>
+                </form>
+            {% empty %}
+                <p class="text-gray-400">No items in this order.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Status and Cancel Actions -->
+        <div class="mt-4 flex space-x-4">
+            <form method="post" action="{% url 'admin_order_detail' order.id %}" class="flex items-center">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_status">
+                <select name="status" class="p-2 border border-gray-700 rounded bg-gray-900 text-white mr-2">
+                    {% for status in status_choices %}
+                        <option value="{{ status }}" {% if order.status == status %}selected{% endif %}>{{ status|title }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Update Status</button>
+            </form>
+
+            {% if order.status != 'cancelled' %}
+                <form method="post" action="{% url 'admin_order_detail' order.id %}" class="flex items-center">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="cancel_order">
+                    <button type="submit" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700" onclick="return confirm('Are you sure you want to cancel this order?')">Cancel Order</button>
+                </form>
+            {% endif %}
+
+            <a href="{% url 'admin_order' %}" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Back to List</a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="mt-4 p-2 bg-green-600 text-white rounded">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}
+  

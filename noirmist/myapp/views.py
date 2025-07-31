@@ -8,7 +8,7 @@ from django.conf import settings
 
 from django.contrib import messages
 import random
-from . models import CustomUser,Product,Category,Brand,ProductImage,ProductVariant,banner
+from . models import CustomUser,Product,Category,Brand,ProductImage,ProductVariant,banner,Order,OrderItem
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
@@ -460,3 +460,77 @@ def admin_banner(request):
     return render(request, 'admin_banner.html', {
         'banners': banners
     })
+
+def admin_order(request):
+    orders_qs = Order.objects.select_related('user').order_by('-created_at')
+    
+    # Filter by status if provided
+    status_filter = request.GET.get('status')
+    if status_filter:
+        orders_qs = orders_qs.filter(status=status_filter)
+
+    paginator = Paginator(orders_qs, 10)  # 10 orders per page (adjust as needed)
+    page_number = request.GET.get('page')
+    orders = paginator.get_page(page_number)
+
+    # Attach the first OrderItem's main image to each order
+    for order in orders:
+        order_items = order.items.all().select_related('variant__product_id')
+        if order_items.exists():
+            first_item = order_items[0]
+            first_item.main_image = (
+                first_item.variant.images.filter(is_main=True).first() or
+                first_item.variant.product_id.productimage_set.filter(is_main=True).first()
+            )
+            order.first_item = first_item
+        else:
+            order.first_item = None
+
+    context = {
+        'orders': orders,
+        'status_choices': ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],  # For filter dropdown
+    }
+    return render(request, 'admin_orderlist.html', context)
+
+def admin_order_detail(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    order_items = OrderItem.objects.filter(order=order).select_related('variant__product_id')
+    for item in order_items:
+        item.main_image = (
+            item.variant.images.filter(is_main=True).first() or
+            item.variant.product_id.productimage_set.filter(is_main=True).first()
+        )
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update_status':
+            new_status = request.POST.get('status')
+            if new_status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled']:
+                order.status = new_status
+                if new_status == 'cancelled':
+                    order.cancelled_at = datetime.now()
+                order.save()
+                messages.success(request, f"Order #{order_id} status updated to {new_status}.")
+        elif action == 'cancel_order':
+            if order.status != 'cancelled':
+                order.status = 'cancelled'
+                order.cancelled_at = datetime.now()
+                order.save()
+                messages.success(request, f"Order #{order_id} has been cancelled.")
+        elif action == 'update_return':
+            item_id = request.POST.get('item_id')
+            new_return_status = request.POST.get('return_status')
+            if item_id and new_return_status in ['not_requested', 'requested', 'returned', 'rejected']:
+                item = get_object_or_404(OrderItem, id=item_id, order=order)
+                item.return_status = new_return_status
+                item.save()
+                messages.success(request, f"Return status for item #{item_id} updated to {new_return_status}.")
+        return redirect('admin_order_detail', order_id=order_id)
+
+    context = {
+        'order': order,
+        'order_items': order_items,
+        'status_choices': ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+        'return_status_choices': ['not_requested', 'requested', 'returned', 'rejected'],
+    }
+    return render(request, 'admin_order_detail.html', context)

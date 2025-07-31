@@ -1,0 +1,61 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .invoice { width: 100%; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .item-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .item-table th, .item-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .total { font-weight: bold; text-align: right; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="invoice">
+        <div class="header">
+            <h1>Invoice</h1>
+            <p>Order #{{ order.id }}</p>
+            <p>Date: {{ order.created_at|date:"F d, Y" }}</p>
+            <p>Payment Method: {{ order.payment_method|title }}</p>
+            <p>Payment Status: {{ order.payment_status|title }}</p>
+            <p>Expected Delivery: {{ order.delivery_date|date:"m/d/Y"|default:"N/A" }}</p>
+        </div>
+        <div>
+            <h3>Shipping Address</h3>
+            <p>{{ order.shipping_address|default:"No address available" }}</p>
+        </div>
+        <table class="item-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Size</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Return Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order_items %}
+                    <tr>
+                        <td>{{ item.variant.product_id.name }}</td>
+                        <td>{{ item.variant.size }} ML</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>₹{{ item.price|floatformat:2 }}</td>
+                        <td>₹{{ item.total|floatformat:2 }}</td>
+                        <td>{{ item.return_status|title }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="total">
+            <p>Subtotal: ₹{{ order.total|floatformat:2 }}</p>
+            <p>Discount: -₹{{ order.discount_amount|floatformat:2 }}</p>
+            <p>Shipping: ₹0.00</p>
+            <p>Total: ₹{{ order.total|floatformat:2 }}</p>
+        </div>
+    </div>
+</body>
+</html>
+```

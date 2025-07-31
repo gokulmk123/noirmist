@@ -12,7 +12,7 @@
 
    
     <div id="countdown" class="text-center text-sm text-gray-500 font-medium">
-      OTP expires in: <span id="timer">02:00</span>
+      OTP expires in: <span id="timer">00:30</span>
     </div>
 
     {% for message in messages %}
@@ -34,7 +34,7 @@
   </form>
 
   <script>
-    let timeLeft = 120;
+    let timeLeft = 30;
     const timerSpan = document.getElementById('timer');
     const resendBtn = document.getElementById('resendBtn');
     const resendMsg = document.getElementById('resendMsg');
@@ -71,7 +71,7 @@
             resendMsg.textContent = data.message;
 
            
-            timeLeft = 120;
+            timeLeft = 30;
             timerSpan.textContent = formatTime(timeLeft);
             resendBtn.disabled = true;
             resendBtn.classList.add('cursor-not-allowed', 'text-gray-400');

@@ -14,7 +14,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for address in addresses %}
-        <div class="border border-gray-300 rounded-md p-4 shadow-sm bg-white relative text-gray-800">
+        <div class="border border-gray-300 rounded-md p-4 shadow-sm bg-gray-700 relative text-white">
 
             <form method="POST" action="{% url 'set_default_address' address.id %}" class="absolute top-2 right-2">
                 {% csrf_token %}
@@ -37,7 +37,7 @@
             <p>mobile: {{ address.mobile }}</p>
 
             {% if address.is_default %}
-                <span class="inline-block mt-1 text-green-600 text-sm font-medium">✅ Default address</span>
+                <span class="inline-block mt-1 text-green-600 text-sm font-medium"> Default address</span>
             {% endif %}
 
             <div class="mt-4 flex space-x-4">
@@ -52,7 +52,7 @@
        '{{ address.zip_code|escapejs }}',
        '{{ address.country|escapejs }}'
    )"
-   class="text-blue-600 hover:underline">
+   class="text-blue-500 hover:underline">
    Edit
 </a>
 

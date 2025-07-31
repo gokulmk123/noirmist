@@ -1,49 +1,32 @@
+
 {% extends 'user_base.html' %}
 {% load static %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-10">
-    <div class="mb-6">
-        <h2 class="text-3xl font-bold">Order Confirmation</h2>
-        <p class="text-sm text-gray-500 mt-1">NOIRMIST > Cart > Checkout > Confirmation</p>
+<div class="p-6">
+    <h1 class="text-3xl font-bold mb-4">Order Confirmation</h1>
+    <p class="text-gray-600 mb-6">Thank you for your order! Order #{{ order.id }} has been placed.</p>
+    <div class="border border-gray-700 rounded p-4 mb-4">
+        <p><strong>Total:</strong> ₹{{ order.total|floatformat:2 }}</p>
+        <p><strong>Status:</strong> {{ order.status|title }}</p>
+        <p><strong>Payment Method:</strong> {{ order.payment_method|title }}</p>
+        <p><strong>Payment Status:</strong> {{ order.payment_status|title }}</p>
+        <p><strong>Expected Delivery:</strong> {{ order.delivery_date|date:"m/d/Y"|default:"N/A" }}</p>
     </div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="p-2 mb-2 text-sm {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} rounded">
-                {{ message }}
+    <h3 class="text-xl font-semibold mb-2">Items Ordered</h3>
+    {% for item in order_items %}
+        <div class="flex items-center mb-4">
+            {% if item.main_image %}
+                <img src="{{ item.main_image.image.url }}" alt="{{ item.variant.product_id.name }}" class="w-16 h-16 object-cover rounded mr-4">
+            {% endif %}
+            <div>
+                <p class="text-sm font-semibold">{{ item.variant.product_id.name }}</p>
+                <p class="text-xs text-gray-600">Size: {{ item.variant.size }} ML | Quantity: {{ item.quantity }} | ₹{{ item.total|floatformat:2 }}</p>
+                <p class="text-xs text-gray-600">Return Status: {{ item.return_status|title }}</p>
             </div>
-        {% endfor %}
-    {% endif %}
-
-    <div class="border p-6 rounded shadow-sm bg-white text-gray-800">
-        <h3 class="text-xl font-semibold mb-4">Thank You for Your Order!</h3>
-        <p class="text-gray-600 mb-4">Your order <strong>#{{ order.id }}</strong> has been placed successfully.</p>
-        <img src="{% static 'images/thank_you_illustration.jpg' %}" alt="Thank You" class="w-32 h-32 mx-auto mb-4">
-        <h4 class="text-lg font-medium mb-2">Order Details</h4>
-        <div class="space-y-4">
-            {% for item in order.items.all %}
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="font-medium">{{ item.variant.product_id.name }} ({{ item.variant.size }} ML)</p>
-                        <p class="text-sm text-gray-500">Quantity: {{ item.quantity }}</p>
-                    </div>
-                    <p class="font-semibold">₹{{ item.price|floatformat:2 }}</p>
-                </div>
-            {% endfor %}
         </div>
-        <div class="flex justify-between font-semibold text-lg border-t pt-4 mt-4">
-            <span>Total</span>
-            <span>₹{{ order.total|floatformat:2 }}</span>
-        </div>
-        <div class="mt-4">
-            <h4 class="text-lg font-medium mb-2">Shipping Address</h4>
-            <p class="text-gray-600">{{ order.shipping_address }}</p>
-        </div>
-        <div class="mt-6 space-y-2">
-            <a href="{% url 'order_detail' order.id %}" class="block w-full bg-black text-white text-center py-2 rounded hover:bg-gray-800 transition">View Order Details</a>
-            <a href="{% url 'product_list' %}" class="block w-full bg-gray-200 text-gray-800 text-center py-2 rounded hover:bg-gray-300 transition">Continue Shopping</a>
-        </div>
-    </div>
+    {% endfor %}
+    <a href="{% url 'order_detail' order.id %}" class="mt-4 inline-block text-blue-400 hover:underline">View Order Details</a>
 </div>
 {% endblock %}
+```

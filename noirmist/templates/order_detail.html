@@ -1,0 +1,78 @@
+
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="p-6">
+    <h1 class="text-3xl font-bold mb-4">Order Tracking</h1>
+    <p class="text-gray-600 mb-6">Track your order status and delivery information</p>
+
+    {% if order_items %}
+        {% for item in order_items %}
+            <div class="flex items-center mb-6 ">
+                <img src="{% if item.main_image %}{{ item.main_image.image.url }}{% else %}{% static 'images/placeholder_product.jpg' %}{% endif %}" alt="{{ item.variant.product_id.name }}" class="w-24 h-24 object-cover rounded mt-6 mr-4">
+                <div>
+                    <h2 class="text-xl font-bold">{{ item.variant.product_id.name }}</h2>
+                    
+                    <div class="flex items-center mt-4">
+                        <p class="text-white">Size: {{ item.variant.size }} | Quantity: {{ item.quantity }} | ₹{{ item.price|floatformat:2 }}</p>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-white bg-blue-500 text-sm">
+                            {{ order.status|title }}
+                        </span>
+                        <span class="ml-2 text-white">expected by {{ order.delivery_date|date:"m/d/Y"|default:"N/A" }}</span>
+                    </div>
+                    <p class="text-white mt-1">Payment Status: <span class="font-bold">{{ order.payment_status|upper }}</span></p>
+                    <p class="text-white mt-1">Payment Method: {{ order.payment_method|title }}</p>
+                    <p class="text-white mt-1">Return Status: <span class="font-bold">{{ item.return_status|title }}</span></p>
+                </div>
+            </div>
+        {% endfor %}
+
+        <!-- Progress Bar -->
+        <div class="flex items-center justify-between mb-8 relative max-w-4xl mx-auto">
+    {% for stage in stages %}
+        <div class="flex flex-col items-center">
+            <div class="w-16 h-16 flex items-center justify-center rounded-full bg-white border-4 {% if stage|lower == current_stage %}border-blue-600 animate-pulse{% else %}border-gray-300{% endif %} shadow-lg hover:shadow-xl transition-all duration-300">
+                {% if stage == 'Processing' %}<i class="fas fa-clock text-blue-600 text-2xl"></i>
+                {% elif stage == 'Packed' %}<i class="fas fa-check text-green-600 text-2xl"></i>
+                {% elif stage == 'Shipped' %}<i class="fas fa-truck text-yellow-600 text-2xl"></i>
+                {% elif stage == 'Delivered' %}<i class="fas fa-box-open text-purple-600 text-2xl"></i>
+                {% elif stage == 'Return' %}<i class="fas fa-undo text-orange-600 text-2xl"></i>
+                {% elif stage == 'Returned' %}<i class="fas fa-check-double text-green-700 text-2xl"></i>
+                {% elif stage == 'Cancelled' %}<i class="fas fa-times text-red-600 text-2xl"></i>{% endif %}
+            </div>
+            <p class="text-sm mt-3 font-semibold {% if stage|lower == current_stage %}text-blue-600{% else %}text-gray-500{% endif %} tracking-wide">{{ stage }}</p>
+        </div>
+        {% if not forloop.last %}
+            <div class="flex-1 h-2 mx-4 relative">
+                <div class="absolute top-1/2 w-full h-1 bg-gray-200 rounded-full"></div>
+                <div class="absolute top-1/2 w-{% widthratio forloop.counter 7 100 %}% h-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-500 ease-in-out" style="transform: translateY(-50%);"></div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+        <!-- Cancel Button -->
+        <button class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Cancel Item</button>
+    {% else %}
+        <p class="text-gray-600">No items in this order.</p>
+    {% endif %}
+
+    <!-- Delivery Address and Order Summary -->
+    <div class="flex mt-6">
+        <div class="w-1/2 p-4 bg-gray-700 rounded shadow">
+            <h3 class="text-lg font-semibold mb-2 text-white">Delivery Address</h3>
+            <p class="text-white"><i class="fas fa-map-marker-alt"></i> {{ order.shipping_address|default:"No address available" }}</p>
+        </div>
+        <div class="w-1/2 p-4 bg-gray-700 rounded shadow ml-4">
+            <h3 class="text-lg font-semibold mb-2 text-white">Order Summary</h3>
+            <p class="text-gray-300">Subtotal: ₹{{ order.total|floatformat:2 }}</p>
+            <p class="text-green-400">Discount: -₹{{ order.discount_amount|floatformat:2 }}</p>
+            <p class="text-gray-300">Shipping: ₹0.00</p>
+            <p class="font-bold mt-2 text-white">Total: ₹{{ order.total|floatformat:2 }}</p>
+        </div>
+    </div>
+
+ 
+</div>
+{% endblock %}
